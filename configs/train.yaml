@@ -1,0 +1,48 @@
+# 학습 파이프라인 설정
+run_name: v1_qwen_0.5b_lora
+
+model_config: configs/model_qwen.yaml
+lora_config:  configs/lora.yaml
+
+# 데이터셋
+train_data: data/processed/v1_train.jsonl
+eval_data:  data/processed/v1_val.jsonl
+eval_golden: data/eval/golden.jsonl   # 학습 종료 후 별도 평가
+
+# 학습 하이퍼파라미터
+per_device_train_batch_size: 8
+per_device_eval_batch_size: 8
+gradient_accumulation_steps: 4         # 유효 batch 32
+num_train_epochs: 3
+learning_rate: 2.0e-4
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+weight_decay: 0.01
+max_grad_norm: 1.0
+seed: 42
+
+# 출력
+output_dir: models/lora/v1
+logging_steps: 20
+save_strategy: epoch
+save_total_limit: 2
+eval_strategy: epoch
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+greater_is_better: false
+
+# 메모리 / 속도
+bf16: true
+fp16: false
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+dataloader_num_workers: 2
+
+# 4-bit 베이스 로딩 (QLoRA) — VRAM 부족 시 활성화
+load_in_4bit: false
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+
+# WandB
+report_to: wandb   # "none"으로 끄기 가능

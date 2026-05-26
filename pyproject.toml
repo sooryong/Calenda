@@ -1,0 +1,73 @@
+[project]
+name = "calendar-agent"
+version = "0.1.0"
+description = "On-device schedule extraction agent — Qwen2.5-0.5B + LoRA + GGUF INT4"
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+# 참고: 데이터 생성·평가 단계는 3.14에서도 잘 동작.
+# 학습 단계(extras='train')의 PyTorch/bitsandbytes는 새 Python 버전 대응이 느릴 수 있음.
+# 학습 시 wheel 못 찾는 에러가 나면 Python 3.11 별도 설치 권장.
+authors = [{ name = "Soo", email = "soo@vibezent.com" }]
+
+dependencies = [
+    # --- Teacher / API ---
+    "anthropic>=0.39.0",
+    "openai>=1.40.0",          # 선택: 다른 teacher와 비교 시
+    "python-dotenv>=1.0.0",
+
+    # --- 데이터 처리 ---
+    "pydantic>=2.6.0",
+    "orjson>=3.10.0",
+    "pandas>=2.2.0",
+    "pyarrow>=15.0.0",
+    "duckdb>=0.10.0",
+    "tqdm>=4.66.0",
+    "tenacity>=8.2.0",         # API 재시도
+
+    # --- 학습 (선택 설치 권장: pip install -e .[train]) ---
+    # 무거우므로 기본에서 제외하고 extras로 관리
+
+    # --- UI ---
+    # streamlit도 extras로 관리
+
+    # --- 평가 / 유틸 ---
+    "python-dateutil>=2.9.0",
+    "rapidfuzz>=3.6.0",        # title/location 퍼지 매칭
+    "regex>=2024.4.0",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.3.0",
+    "transformers>=4.44.0",
+    "peft>=0.12.0",
+    "trl>=0.10.0",
+    "accelerate>=0.33.0",
+    "bitsandbytes>=0.43.0; platform_system != 'Windows'",  # Windows는 wheel 별도
+    "datasets>=2.20.0",
+    "sentencepiece>=0.2.0",
+    "wandb>=0.17.0",
+    "einops>=0.8.0",
+]
+
+ui = [
+    "streamlit>=1.36.0",
+    "altair>=5.3.0",
+]
+
+dev = [
+    "ruff>=0.5.0",
+    "pytest>=8.0.0",
+    "ipykernel>=6.29.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []  # 스크립트 기반이라 패키지 없음. 필요 시 src 레이아웃으로 전환.
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

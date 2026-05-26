@@ -1,0 +1,15 @@
+# Qwen2.5-0.5B-Instruct 베이스 설정
+name: qwen2.5-0.5b
+hf_id: Qwen/Qwen2.5-0.5B-Instruct
+max_seq_len: 2048
+trust_remote_code: false
+
+# 입력 포맷 (chat template은 토크나이저 기본 사용)
+system_prompt: |
+  당신은 메시지에서 일정 정보를 추출하는 모델입니다.
+  입력의 <수신시각>을 기준으로 상대 시간을 절대 시각으로 변환하고,
+  지정된 JSON 스키마에 맞춰 순수 JSON만 출력합니다.
+  메시지에 명시되지 않은 정보는 절대 만들어내지 않고 null을 씁니다.
+
+# 학습 시 적용할 채팅 템플릿 형태
+# user 메시지에 입력 블록 전체가 들어가고, assistant가 JSON을 출력

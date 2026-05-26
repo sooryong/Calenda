@@ -1,0 +1,81 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- 환경 / 비밀 ---
+.env
+.env.local
+*.key
+*.pem
+
+# --- 모델 / 데이터 (대용량) ---
+models/lora/*
+models/merged/*
+models/gguf/*
+!models/lora/.gitkeep
+!models/merged/.gitkeep
+!models/gguf/.gitkeep
+
+data/raw/*.jsonl
+data/raw/*.json
+data/processed/*.jsonl
+data/failures/*.jsonl
+!data/**/.gitkeep
+
+# 평가 골든셋은 형상관리 대상이지만 파일이 크면 LFS 고려
+# data/eval/*.jsonl  ← 의도적으로 추적함 (단 언더스코어 prefix는 제외)
+data/eval/_*.jsonl
+
+# --- HF / 학습 산출물 ---
+.cache/
+hf_cache/
+runs/
+wandb/
+mlruns/
+checkpoints/
+*.bin
+*.safetensors
+*.gguf
+
+# --- 로그 ---
+logs/*.log
+logs/*.txt
+!logs/.gitkeep
+
+# --- 노트북 출력 ---
+notebooks/*.ipynb_checkpoints
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- 안드로이드 (추후) ---
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+*.keystore
+
+# --- llama.cpp 빌드 산출물 ---
+llama.cpp/

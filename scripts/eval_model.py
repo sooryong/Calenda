@@ -1,0 +1,194 @@
+"""학습된 모델을 골든 평가셋으로 평가.
+
+사용:
+    python scripts/eval_model.py --model models/merged/v1 --eval data/eval/golden.jsonl --out logs/eval_v1.json
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import datetime
+from pathlib import Path
+
+from rapidfuzz import fuzz
+from tqdm import tqdm
+
+from _common import read_jsonl, safe_json_loads
+
+
+TIME_TOLERANCE_MIN = 5  # ±5분 허용
+
+
+def parse_iso(s: str | None):
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def time_match(a: str | None, b: str | None) -> bool:
+    da, db = parse_iso(a), parse_iso(b)
+    if da is None and db is None:
+        return True
+    if da is None or db is None:
+        return False
+    return abs((da - db).total_seconds()) <= TIME_TOLERANCE_MIN * 60
+
+
+def title_score(a: str | None, b: str | None) -> float:
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    # 100점 만점 ratio → 0~1
+    return fuzz.token_set_ratio(a, b) / 100.0
+
+
+def location_score(a: str | None, b: str | None) -> float:
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    return fuzz.partial_ratio(a, b) / 100.0
+
+
+def score_events(gold_events: list, pred_events: list) -> dict:
+    """가장 단순한 1:1 매칭 (start 시각 기준 최근접). 추후 헝가리안으로 교체 가능."""
+    if not gold_events and not pred_events:
+        return {"event_count_match": True, "title_f1": 1.0, "time_f1": 1.0, "loc_f1": 1.0}
+    if len(gold_events) != len(pred_events):
+        return {"event_count_match": False, "title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
+
+    titles, times, locs = [], [], []
+    for g, p in zip(gold_events, pred_events):
+        titles.append(title_score(g.get("title"), p.get("title")))
+        times.append(1.0 if time_match(g.get("start"), p.get("start")) else 0.0)
+        locs.append(location_score(g.get("location"), p.get("location")))
+
+    def mean(xs): return sum(xs) / max(1, len(xs))
+    return {
+        "event_count_match": True,
+        "title_f1": mean(titles),
+        "time_f1": mean(times),
+        "loc_f1": mean(locs),
+    }
+
+
+def load_model(path: str):
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tok = AutoTokenizer.from_pretrained(path)
+    model = AutoModelForCausalLM.from_pretrained(
+        path, torch_dtype=torch.float16, device_map="auto"
+    )
+    model.eval()
+    return model, tok
+
+
+def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> str:
+    user_block = (
+        f"<채널: {sample['channel']}>\n"
+        f"<수신시각: {sample['received_at']}>\n"
+        f"<발신자: {sample.get('sender', '')}>\n"
+        f"<메시지>\n{sample['message']}\n</메시지>"
+    )
+    msgs = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user_block},
+    ]
+    inputs = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True).to(model.device)
+    out = model.generate(
+        inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+        temperature=0.0,
+        pad_token_id=tok.eos_token_id,
+    )
+    text = tok.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
+    return text.strip()
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", required=True)
+    ap.add_argument("--eval", required=True)
+    ap.add_argument("--out", default="logs/eval_latest.json")
+    ap.add_argument("--system_prompt", default=None, help="없으면 model_qwen.yaml 사용")
+    ap.add_argument("--failures_out", default="data/failures/round_latest.jsonl")
+    args = ap.parse_args()
+
+    if args.system_prompt is None:
+        import yaml
+        with open("configs/model_qwen.yaml", "r", encoding="utf-8") as f:
+            args.system_prompt = yaml.safe_load(f)["system_prompt"]
+
+    model, tok = load_model(args.model)
+    samples = list(read_jsonl(args.eval))
+
+    json_valid = 0
+    has_sched_correct = 0
+    field_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
+    event_count_acc = 0
+    failures = []
+
+    for sample in tqdm(samples, desc="eval"):
+        raw = infer(model, tok, args.system_prompt, sample)
+        pred = safe_json_loads(raw)
+
+        gold = sample["gold"]
+        if pred is None:
+            failures.append({**sample, "_pred_raw": raw, "_reason": "json_parse_error"})
+            continue
+
+        json_valid += 1
+
+        if pred.get("has_schedule") == gold.get("has_schedule"):
+            has_sched_correct += 1
+
+        scores = score_events(gold.get("events", []), pred.get("events", []))
+        if scores["event_count_match"]:
+            event_count_acc += 1
+        for k in field_sum:
+            field_sum[k] += scores[k]
+
+        # 실패 임계
+        if scores["title_f1"] < 0.7 or scores["time_f1"] < 1.0:
+            failures.append({**sample, "_pred": pred, "_scores": scores})
+
+    n = len(samples)
+    metrics = {
+        "n": n,
+        "json_valid_rate": json_valid / n,
+        "has_schedule_acc": has_sched_correct / n,
+        "title_f1_avg": field_sum["title_f1"] / n,
+        "time_match_rate": field_sum["time_f1"] / n,
+        "location_f1_avg": field_sum["loc_f1"] / n,
+        "event_count_acc": event_count_acc / n,
+    }
+    metrics["final_score"] = (
+        0.30 * metrics["json_valid_rate"]
+        + 0.25 * metrics["has_schedule_acc"]
+        + 0.35 * (
+            (metrics["title_f1_avg"] + metrics["time_match_rate"] + metrics["location_f1_avg"]) / 3
+        )
+        + 0.10 * metrics["event_count_acc"]
+    )
+
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(metrics, ensure_ascii=False, indent=2))
+
+    # 실패 저장 (다음 폐루프 입력)
+    if failures:
+        Path(args.failures_out).parent.mkdir(parents=True, exist_ok=True)
+        with open(args.failures_out, "w", encoding="utf-8") as f:
+            for r in failures:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        print(f"[eval] 실패 {len(failures)}건 → {args.failures_out}")
+
+
+if __name__ == "__main__":
+    main()
