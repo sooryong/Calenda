@@ -154,13 +154,19 @@ def main():
         sft_kwargs["max_seq_length"] = model_cfg["max_seq_len"]
     sft_cfg = SFTConfig(**sft_kwargs)
 
-    trainer = SFTTrainer(
+    # trl이 버전에 따라 tokenizer/processing_class 인자명이 다름.
+    trainer_kwargs = dict(
         model=model,
         train_dataset=train_ds,
         eval_dataset=eval_ds,
         args=sft_cfg,
-        tokenizer=tokenizer,
     )
+    trainer_params = inspect.signature(SFTTrainer.__init__).parameters
+    if "processing_class" in trainer_params:
+        trainer_kwargs["processing_class"] = tokenizer
+    elif "tokenizer" in trainer_params:
+        trainer_kwargs["tokenizer"] = tokenizer
+    trainer = SFTTrainer(**trainer_kwargs)
 
     trainer.train()
     trainer.save_model(cfg["output_dir"])
