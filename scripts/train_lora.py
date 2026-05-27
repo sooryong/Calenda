@@ -80,6 +80,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_cfg["hf_id"], trust_remote_code=model_cfg.get("trust_remote_code", False))
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.model_max_length = model_cfg["max_seq_len"]
 
     bnb = None
     if cfg.get("load_in_4bit"):
@@ -113,7 +114,9 @@ def main():
     train_ds = build_chat_dataset(cfg["train_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"])
     eval_ds = build_chat_dataset(cfg["eval_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"])
 
-    sft_cfg = SFTConfig(
+    # trl이 버전에 따라 max_seq_length/max_length 인자명이 다름.
+    # 모든 버전에서 통하는 경로: 토크나이저의 model_max_length 위에서 설정 + SFTConfig에는 미지정.
+    sft_kwargs = dict(
         output_dir=cfg["output_dir"],
         run_name=cfg["run_name"],
         per_device_train_batch_size=cfg["per_device_train_batch_size"],
@@ -139,10 +142,17 @@ def main():
         optim=cfg["optim"],
         dataloader_num_workers=cfg["dataloader_num_workers"],
         report_to=cfg.get("report_to", "none"),
-        max_seq_length=model_cfg["max_seq_len"],
         dataset_text_field="text",
         packing=False,
     )
+    # 가능하면 max_length(현행) 또는 max_seq_length(구버전)를 시도. 둘 다 안 받으면 토크나이저 기본 사용.
+    import inspect
+    sft_params = inspect.signature(SFTConfig.__init__).parameters
+    if "max_length" in sft_params:
+        sft_kwargs["max_length"] = model_cfg["max_seq_len"]
+    elif "max_seq_length" in sft_params:
+        sft_kwargs["max_seq_length"] = model_cfg["max_seq_len"]
+    sft_cfg = SFTConfig(**sft_kwargs)
 
     trainer = SFTTrainer(
         model=model,
