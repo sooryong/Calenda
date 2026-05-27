@@ -20,6 +20,14 @@ def load_yaml(path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
+def _json_default(o):
+    """datasets/pyarrow가 ISO 문자열을 datetime으로 자동 변환한 케이스를 다시 ISO로."""
+    from datetime import date, datetime
+    if isinstance(o, (datetime, date)):
+        return o.isoformat()
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+
+
 def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: int):
     """JSONL → chat-template 토크나이즈."""
     from datasets import load_dataset
@@ -27,13 +35,16 @@ def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: 
     raw = load_dataset("json", data_files=jsonl_path, split="train")
 
     def to_chat(ex):
+        recv = ex["received_at"]
+        if hasattr(recv, "isoformat"):
+            recv = recv.isoformat()
         user_block = (
             f"<채널: {ex['channel']}>\n"
-            f"<수신시각: {ex['received_at']}>\n"
+            f"<수신시각: {recv}>\n"
             f"<발신자: {ex.get('sender', '')}>\n"
             f"<메시지>\n{ex['message']}\n</메시지>"
         )
-        gold_str = json.dumps(ex["gold"], ensure_ascii=False)
+        gold_str = json.dumps(ex["gold"], ensure_ascii=False, default=_json_default)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_block},
