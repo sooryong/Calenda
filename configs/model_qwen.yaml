@@ -1,7 +1,7 @@
 # Qwen2.5-0.5B-Instruct 베이스 설정
 name: qwen2.5-0.5b
 hf_id: Qwen/Qwen2.5-0.5B-Instruct
-max_seq_len: 2048
+max_seq_len: 1024
 trust_remote_code: false
 
 # 입력 포맷 (chat template은 토크나이저 기본 사용)
