@@ -20,31 +20,34 @@ def load_yaml(path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
-def _json_default(o):
-    """datasets/pyarrow가 ISO 문자열을 datetime으로 자동 변환한 케이스를 다시 ISO로."""
-    from datetime import date, datetime
-    if isinstance(o, (datetime, date)):
-        return o.isoformat()
-    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
-
-
 def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: int):
-    """JSONL → chat-template 토크나이즈."""
-    from datasets import load_dataset
+    """JSONL → chat-template 토크나이즈.
 
-    raw = load_dataset("json", data_files=jsonl_path, split="train")
+    중요: datasets.load_dataset("json", ...)이 ISO 8601 문자열을 pyarrow timestamp로
+    자동 변환하고 UTC로 정규화해버려서 학습 데이터의 +09:00이 사라지는 버그가 있음
+    (2026-05 v1 학습에서 time_match 0.34로 떨어진 원인).
+    JSONL을 직접 파싱한 dict 리스트로 Dataset.from_list 하면 문자열 그대로 보존.
+    """
+    import orjson
+    from datasets import Dataset
+
+    rows = []
+    with open(jsonl_path, "rb") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rows.append(orjson.loads(line))
+    raw = Dataset.from_list(rows)
 
     def to_chat(ex):
-        recv = ex["received_at"]
-        if hasattr(recv, "isoformat"):
-            recv = recv.isoformat()
         user_block = (
             f"<채널: {ex['channel']}>\n"
-            f"<수신시각: {recv}>\n"
+            f"<수신시각: {ex['received_at']}>\n"
             f"<발신자: {ex.get('sender', '')}>\n"
             f"<메시지>\n{ex['message']}\n</메시지>"
         )
-        gold_str = json.dumps(ex["gold"], ensure_ascii=False, default=_json_default)
+        gold_str = json.dumps(ex["gold"], ensure_ascii=False)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_block},
