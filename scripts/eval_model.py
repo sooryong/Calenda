@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+KST = timezone(timedelta(hours=9))
 
 from rapidfuzz import fuzz
 from tqdm import tqdm
@@ -23,7 +25,11 @@ def parse_iso(s: str | None):
     if not s:
         return None
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        # 모델이 timezone 누락한 출력을 KST로 가정 (generator.md §7).
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=KST)
+        return dt
     except Exception:
         return None
 
@@ -99,15 +105,20 @@ def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> s
         {"role": "system", "content": system},
         {"role": "user", "content": user_block},
     ]
-    inputs = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True).to(model.device)
+    # transformers 5.x: apply_chat_template은 BatchEncoding 반환
+    # transformers 4.x: Tensor 반환. 둘 다 호환.
+    encoded = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True)
+    if hasattr(encoded, "input_ids"):
+        input_ids = encoded.input_ids.to(model.device)
+    else:
+        input_ids = encoded.to(model.device)
     out = model.generate(
-        inputs,
+        input_ids,
         max_new_tokens=max_new_tokens,
         do_sample=False,
-        temperature=0.0,
         pad_token_id=tok.eos_token_id,
     )
-    text = tok.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
+    text = tok.decode(out[0][input_ids.shape[1]:], skip_special_tokens=True)
     return text.strip()
 
 
