@@ -1,7 +1,7 @@
 # HyperCLOVA X SEED 0.5B (비교 후보, 라이선스 확인 후 사용)
 name: hyperclovax-seed-0.5b
 hf_id: naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-0.5B
-max_seq_len: 2048
+max_seq_len: 1024  # T4 16GB OOM 회피용 (원본 2048에서 축소)
 trust_remote_code: true  # 모델 카드 확인 필요
 
 system_prompt: |
