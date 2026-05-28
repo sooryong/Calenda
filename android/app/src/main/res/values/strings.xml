@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calendar Agent</string>
+
+    <string name="model_loaded">모델 로드됨 ✓</string>
+    <string name="model_present_not_loaded">모델 파일 있음 — 로드 필요</string>
+    <string name="model_missing">모델 없음 — gguf 파일 임포트 필요</string>
+    <string name="load_model">모델 로드</string>
+    <string name="reload_model">모델 재로드</string>
+    <string name="import_model">모델 파일 임포트 (.gguf)</string>
+    <string name="loading_model">모델 로딩 중…</string>
+    <string name="importing_model">모델 복사 중…</string>
+    <string name="import_done">임포트 완료</string>
+    <string name="import_failed">임포트 실패</string>
+    <string name="load_failed">모델 로드 실패</string>
+
+    <string name="channel_hint">채널 (kakao / sms / gmail)</string>
+    <string name="sender_hint">발신자</string>
+    <string name="received_at_hint">수신시각 (ISO 8601)</string>
+    <string name="message_hint">메시지 내용</string>
+    <string name="extract">일정 추출</string>
+    <string name="add_calendar">캘린더에 추가</string>
+    <string name="inferring">추론 중… (CPU, 수 초 소요)</string>
+    <string name="empty_message">메시지를 입력하세요</string>
+    <string name="calendar_failed">캘린더 등록 실패: %1$s</string>
+
+    <string name="title_model">1. 모델</string>
+    <string name="title_input">2. 메시지 입력</string>
+    <string name="title_result">3. 추출 결과</string>
+</resources>

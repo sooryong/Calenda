@@ -68,11 +68,14 @@ desktop.ini
 *.swp
 *.swo
 
-# --- 안드로이드 (추후) ---
+# --- 안드로이드 ---
 android/.gradle/
 android/build/
 android/app/build/
+android/app/.cxx/
+android/.idea/
 android/local.properties
+android/app/src/main/assets/*.gguf
 *.apk
 *.aab
 *.keystore
