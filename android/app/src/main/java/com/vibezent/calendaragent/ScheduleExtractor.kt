@@ -38,11 +38,29 @@ object ScheduleExtractor {
         "지정된 JSON 스키마에 맞춰 순수 JSON만 출력합니다. " +
         "메시지에 명시되지 않은 정보는 절대 만들어내지 않고 null을 씁니다."
 
+    private val weekdaysKo = listOf("월", "화", "수", "목", "금", "토", "일")
+
+    /** 수신시각 ISO에 한국어 요일을 덧붙임 (학습 train_lora._with_weekday와 동일 형식). */
+    private fun withWeekday(receivedAt: String): String {
+        return try {
+            // ISO의 날짜 부분(yyyy-MM-dd)만 파싱해 요일 계산 (tz 유무 무관)
+            val datePart = receivedAt.substringBefore('T').trim()
+            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val d = fmt.parse(datePart) ?: return receivedAt
+            val cal = java.util.Calendar.getInstance().apply { time = d }
+            // Calendar.DAY_OF_WEEK: 일=1..토=7 → 월=0..일=6 인덱스로 변환
+            val idx = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+            "$receivedAt (${weekdaysKo[idx]})"
+        } catch (e: Exception) {
+            receivedAt
+        }
+    }
+
     /** Qwen2.5 ChatML 포맷으로 프롬프트 구성. */
     fun buildPrompt(channel: String, receivedAt: String, sender: String, message: String): String {
         val userBlock = buildString {
             append("<채널: ").append(channel).append(">\n")
-            append("<수신시각: ").append(receivedAt).append(">\n")
+            append("<수신시각: ").append(withWeekday(receivedAt)).append(">\n")
             append("<발신자: ").append(sender).append(">\n")
             append("<메시지>\n").append(message).append("\n</메시지>")
         }

@@ -94,10 +94,22 @@ def load_model(path: str):
     return model, tok
 
 
+_WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def _with_weekday(received_at: str) -> str:
+    """학습(train_lora._with_weekday)과 동일 형식으로 수신시각에 요일 부착."""
+    try:
+        dt = datetime.fromisoformat(received_at)
+        return f"{received_at} ({_WEEKDAYS_KO[dt.weekday()]})"
+    except Exception:
+        return received_at
+
+
 def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> str:
     user_block = (
         f"<채널: {sample['channel']}>\n"
-        f"<수신시각: {sample['received_at']}>\n"
+        f"<수신시각: {_with_weekday(sample['received_at'])}>\n"
         f"<발신자: {sample.get('sender', '')}>\n"
         f"<메시지>\n{sample['message']}\n</메시지>"
     )
