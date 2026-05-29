@@ -2,7 +2,7 @@
 # GGUF 변환 + 양자화 (여러 레벨 일괄)
 #
 # 사용:
-#   bash scripts/quantize.sh models/merged/v1 models/gguf/v1
+#   bash scripts/quantize.sh models/merged/r3-qwen models/gguf/r3-qwen
 #
 # 전제: ../llama.cpp 가 빌드되어 있어야 함
 #   git clone https://github.com/ggerganov/llama.cpp

@@ -8,8 +8,11 @@ import java.io.File
  * MainActivity(수동)와 백그라운드 수집(리시버/리스너)이 같은 경로·인스턴스를 쓰도록 중앙화.
  */
 object ModelStore {
-    /** 임포트된 모델이 저장되는 파일명. (실제 내용은 사용자가 임포트한 gguf) */
-    const val FILE_NAME = "qwen_v3.Q4_K_M.gguf"
+    /**
+     * 임포트된 모델이 저장되는 고정 슬롯 파일명 (실제 내용은 사용자가 임포트한 gguf).
+     * 라운드 무관 고정 — 새 라운드(r3, r4...) gguf를 임포트해도 이 슬롯에 덮어쓴다.
+     */
+    const val FILE_NAME = "calendar.Q4_K_M.gguf"
 
     fun modelFile(ctx: Context): File = File(ctx.getExternalFilesDir(null), FILE_NAME)
 

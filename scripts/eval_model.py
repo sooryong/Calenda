@@ -1,7 +1,7 @@
 """학습된 모델을 골든 평가셋으로 평가.
 
 사용:
-    python scripts/eval_model.py --model models/merged/v1 --eval data/eval/golden.jsonl --out logs/eval_v1.json
+    python scripts/eval_model.py --model models/merged/r3-qwen --eval data/eval/golden.jsonl --out logs/eval_r3-qwen.json
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """LoRA 어댑터를 베이스 모델에 merge하여 단일 FP16 모델로 저장.
 
 사용:
-    python scripts/merge_lora.py --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/v1 --out models/merged/v1
+    python scripts/merge_lora.py --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r3-qwen --out models/merged/r3-qwen
 """
 from __future__ import annotations
 

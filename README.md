@@ -60,9 +60,9 @@ python scripts/plan.py        --out data/raw/plan_v1.json
 python scripts/generate.py    --plan data/raw/plan_v1.json --out data/raw/v1.jsonl
 python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.jsonl
 python scripts/train_lora.py  --config configs/train.yaml
-python scripts/merge_lora.py  --lora models/lora/v1 --out models/merged/v1
-python scripts/eval_model.py  --model models/merged/v1 --eval data/eval/golden.jsonl
-bash   scripts/quantize.sh    models/merged/v1 models/gguf/v1
+python scripts/merge_lora.py  --lora models/lora/r3-qwen --out models/merged/r3-qwen
+python scripts/eval_model.py  --model models/merged/r3-qwen --eval data/eval/golden.jsonl
+bash   scripts/quantize.sh    models/merged/r3-qwen models/gguf/r3-qwen
 ```
 
 ## 베이스 모델

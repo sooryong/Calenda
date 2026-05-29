@@ -7,7 +7,7 @@
 
 출력: data/processed/weekend_boost.jsonl
 사용: python scripts/gen_weekend_boost.py --n 150 [--seed 7]
-이후 v1_train.jsonl에 합치려면 --append-to data/processed/v1_train.jsonl
+이후 train.jsonl에 합치려면 --append-to data/processed/train.jsonl
 """
 from __future__ import annotations
 import argparse, json, random
@@ -114,7 +114,7 @@ def main():
     ap.add_argument("--n", type=int, default=150)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default="data/processed/weekend_boost.jsonl")
-    ap.add_argument("--append-to", default=None, help="추가로 합칠 학습 파일 (예: data/processed/v1_train.jsonl)")
+    ap.add_argument("--append-to", default=None, help="추가로 합칠 학습 파일 (예: data/processed/train.jsonl)")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 

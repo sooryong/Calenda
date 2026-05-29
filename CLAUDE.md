@@ -196,9 +196,9 @@ python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.j
 
 # 학습 → merge → 평가 → 양자화
 python scripts/train_lora.py  --config configs/train.yaml
-python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/v1 --out models/merged/v1
-python scripts/eval_model.py  --model models/merged/v1 --eval data/eval/golden.jsonl --out logs/eval_v1.json
-bash   scripts/quantize.sh    models/merged/v1 models/gguf/v1
+python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r3-qwen --out models/merged/r3-qwen
+python scripts/eval_model.py  --model models/merged/r3-qwen --eval data/eval/golden.jsonl --out logs/eval_r3-qwen.json
+bash   scripts/quantize.sh    models/merged/r3-qwen models/gguf/r3-qwen
 
 # 폐루프: 실패셋으로 다음 라운드 시나리오 생성
 python scripts/plan.py --failures data/failures/round_latest.jsonl --out data/raw/plan_v2.json
