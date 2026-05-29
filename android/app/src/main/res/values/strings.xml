@@ -8,6 +8,7 @@
     <string name="load_model">모델 로드</string>
     <string name="reload_model">모델 재로드</string>
     <string name="import_model">모델 파일 임포트 (.gguf)</string>
+    <string name="reimport_model">모델 교체 (다른 .gguf 임포트)</string>
     <string name="loading_model">모델 로딩 중…</string>
     <string name="importing_model">모델 복사 중…</string>
     <string name="import_done">임포트 완료</string>
@@ -27,4 +28,11 @@
     <string name="title_model">1. 모델</string>
     <string name="title_input">2. 메시지 입력</string>
     <string name="title_result">3. 추출 결과</string>
+
+    <string name="title_collect">자동 수집 (백그라운드)</string>
+    <string name="grant_notif_access">카톡 알림 접근 허용</string>
+    <string name="grant_sms">문자 수신 권한 허용</string>
+    <string name="collect_status">카톡 알림: %1$s · 문자: %2$s</string>
+    <string name="on">켜짐 ✓</string>
+    <string name="off">꺼짐</string>
 </resources>

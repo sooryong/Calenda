@@ -1,13 +1,17 @@
 package com.vibezent.calendaragent
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.vibezent.calendaragent.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -20,8 +24,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var lastExtraction: Extraction? = null
 
+    // 모델 파일 위치는 ModelStore로 중앙화 (백그라운드 수집과 동일 경로 공유)
     private val modelFile: File
-        get() = File(getExternalFilesDir(null), "qwen_v3.Q4_K_M.gguf")
+        get() = ModelStore.modelFile(this)
+
+    private val requestPerms = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { refreshCollectStatus() }
 
     private val pickModel = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -44,8 +53,40 @@ class MainActivity : AppCompatActivity() {
         binding.loadModelButton.setOnClickListener {
             if (modelFile.exists()) loadModel() else pickModelFile()
         }
+        binding.reimportButton.setOnClickListener { pickModelFile() }
         binding.extractButton.setOnClickListener { runExtraction() }
         binding.addCalendarButton.setOnClickListener { addToCalendar() }
+
+        // 자동 수집 권한
+        binding.notifAccessButton.setOnClickListener {
+            // 카톡 알림 가로채기: 사용자가 직접 '알림 접근'에서 본 앱을 켜야 함
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        binding.smsPermButton.setOnClickListener {
+            requestPerms.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.POST_NOTIFICATIONS))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 알림 접근/권한 화면에서 돌아오면 상태 갱신
+        refreshCollectStatus()
+    }
+
+    private fun isNotificationListenerEnabled(): Boolean {
+        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
+        return flat.split(":").any { it.contains(packageName) }
+    }
+
+    private fun isSmsGranted(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+
+    private fun refreshCollectStatus() {
+        val notif = if (isNotificationListenerEnabled()) getString(R.string.on) else getString(R.string.off)
+        val sms = if (isSmsGranted()) getString(R.string.on) else getString(R.string.off)
+        binding.collectStatus.text = getString(R.string.collect_status, notif, sms)
+        binding.notifAccessButton.isEnabled = !isNotificationListenerEnabled()
+        binding.smsPermButton.isEnabled = !isSmsGranted()
     }
 
     private fun refreshModelStatus() {
@@ -66,6 +107,8 @@ class MainActivity : AppCompatActivity() {
                 binding.extractButton.isEnabled = false
             }
         }
+        // 모델 파일이 이미 있으면 '모델 교체' 버튼 노출 (없으면 로드 버튼이 곧 임포트라 불필요)
+        binding.reimportButton.visibility = if (modelFile.exists()) View.VISIBLE else View.GONE
     }
 
     private fun pickModelFile() {
