@@ -69,7 +69,7 @@
     - Gmail `name@domain.com` → 이름과 도메인 분리. 도메인의 첫 단어를 회사명으로 (예: `@company.com` → `Company`, `@koreanair.com` → `Korean Air`, `@startup.io` → `Startup`)
     - 메시지 본문에 발신자 이름이 명시되면 그 이름 사용 (예: 본문 "김팀장 드림" → "김팀장 (Company)")
     - 본인 식별: `sender="나"` 또는 본인 이메일 (`sooryong.byun@gmail.com` = 변수룡 본인)
-17. **thread_context (멀티턴 입력)**: 입력에 `<스레드 맥락>`이 있으면 직전 3~5개 메시지를 참고해서 최종 메시지 해석.
+17. **thread_context (멀티턴 입력)**: 입력에 `<대화내역>`이 있으면 직전 3~5개 메시지를 참고해서 최종 메시지 해석.
     - 최종 메시지가 **확정 응답** ("좋습니다", "OK", "네 알겠습니다", "Confirmed"): 스레드에서 가장 최근 제안된 시각·장소 추출 → `has_schedule=true`
     - 최종 메시지가 **새 제안** ("3시 어때요?"): 확정 아님 → `has_schedule=false`
     - 최종 메시지가 **거절** ("다른 일정 있어 다음에"): `has_schedule=false`

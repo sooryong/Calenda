@@ -15,7 +15,7 @@ KST = timezone(timedelta(hours=9))
 from rapidfuzz import fuzz
 from tqdm import tqdm
 
-from _common import read_jsonl, safe_json_loads
+from _common import build_user_block, read_jsonl, safe_json_loads
 
 
 TIME_TOLERANCE_MIN = 5  # ±5분 허용
@@ -94,25 +94,8 @@ def load_model(path: str):
     return model, tok
 
 
-_WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
-
-
-def _with_weekday(received_at: str) -> str:
-    """학습(train_lora._with_weekday)과 동일 형식으로 수신시각에 요일 부착."""
-    try:
-        dt = datetime.fromisoformat(received_at)
-        return f"{received_at} ({_WEEKDAYS_KO[dt.weekday()]})"
-    except Exception:
-        return received_at
-
-
 def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> str:
-    user_block = (
-        f"<채널: {sample['channel']}>\n"
-        f"<수신시각: {_with_weekday(sample['received_at'])}>\n"
-        f"<발신자: {sample.get('sender', '')}>\n"
-        f"<메시지>\n{sample['message']}\n</메시지>"
-    )
+    user_block = build_user_block(sample)  # thread_context 있으면 <대화내역> 블록 자동 삽입
     msgs = [
         {"role": "system", "content": system},
         {"role": "user", "content": user_block},

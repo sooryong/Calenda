@@ -14,26 +14,12 @@ from pathlib import Path
 
 import yaml
 
+from _common import build_user_block
+
 
 def load_yaml(path: str | Path) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
-
-
-_WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
-
-
-def _with_weekday(received_at: str) -> str:
-    """수신시각 ISO에 한국어 요일을 덧붙임. 예: '...+09:00' → '...+09:00 (금)'.
-    모델이 날짜→요일 계산을 스스로 안 해도 되게 하는 grounding (상대 요일 정확도 향상).
-    학습·추론 프롬프트가 반드시 동일 형식이어야 함 (Android ScheduleExtractor와 일치)."""
-    from datetime import datetime
-    s = received_at.isoformat() if hasattr(received_at, "isoformat") else str(received_at)
-    try:
-        dt = datetime.fromisoformat(s)
-        return f"{s} ({_WEEKDAYS_KO[dt.weekday()]})"
-    except Exception:
-        return s
 
 
 def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: int):
@@ -57,12 +43,7 @@ def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: 
     raw = Dataset.from_list(rows)
 
     def to_chat(ex):
-        user_block = (
-            f"<채널: {ex['channel']}>\n"
-            f"<수신시각: {_with_weekday(ex['received_at'])}>\n"
-            f"<발신자: {ex.get('sender', '')}>\n"
-            f"<메시지>\n{ex['message']}\n</메시지>"
-        )
+        user_block = build_user_block(ex)  # thread_context 있으면 <대화내역> 블록 자동 삽입
         gold_str = json.dumps(ex["gold"], ensure_ascii=False)
         messages = [
             {"role": "system", "content": system_prompt},

@@ -22,6 +22,44 @@ def load_prompt(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def with_weekday(received_at: str) -> str:
+    """수신시각 ISO에 한국어 요일 부착. 예: '...+09:00' → '...+09:00 (금)'.
+    학습·평가·앱 프롬프트가 반드시 동일 형식이어야 함 (Android ScheduleExtractor와 일치)."""
+    from datetime import datetime
+
+    s = received_at.isoformat() if hasattr(received_at, "isoformat") else str(received_at)
+    try:
+        return f"{s} ({WEEKDAYS_KO[datetime.fromisoformat(s).weekday()]})"
+    except Exception:
+        return s
+
+
+def build_user_block(record: dict) -> str:
+    """학습/추론 공용 user 메시지 빌더.
+
+    단일 메시지: 기존 <채널>/<수신시각>/<발신자>/<메시지> 4블록.
+    멀티턴: record['thread_context']가 있으면 <발신자>와 <메시지> 사이에
+            <대화내역> 블록(이전 대화)을 삽입한다. 없으면 생략 → 하위호환.
+    thread_context 원소 형식: {"time": "HH:MM", "sender": "...", "message": "..."}.
+    ★ train_lora / eval_model / (추후 Android)가 전부 이 함수와 동일 포맷이어야 한다."""
+    parts = [
+        f"<채널: {record['channel']}>",
+        f"<수신시각: {with_weekday(record['received_at'])}>",
+        f"<발신자: {record.get('sender', '')}>",
+    ]
+    thread = record.get("thread_context") or []
+    if thread:
+        lines = "\n".join(
+            f"[{t.get('time', '')}] {t.get('sender', '')}: {t.get('message', '')}" for t in thread
+        )
+        parts.append(f"<대화내역>\n{lines}\n</대화내역>")
+    parts.append(f"<메시지>\n{record['message']}\n</메시지>")
+    return "\n".join(parts)
+
+
 def read_jsonl(path: str | Path) -> Iterator[dict[str, Any]]:
     with open(path, "rb") as f:
         for line in f:
