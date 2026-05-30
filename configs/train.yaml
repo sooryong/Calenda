@@ -1,7 +1,7 @@
 # 학습 파이프라인 설정
 # 버전 규약: 라운드 번호(r3, r4...)는 학습 산출물(lora/merged/gguf/eval/zip)에만 붙인다.
 #   입력 데이터(train.jsonl/val.jsonl)와 앱 모델 슬롯은 라운드 무관 고정 이름.
-run_name: r5-qwen-0.5b-lora
+run_name: r6-qwen-0.5b-lora
 
 model_config: configs/model_qwen.yaml
 lora_config:  configs/lora.yaml
@@ -24,7 +24,7 @@ max_grad_norm: 1.0
 seed: 42
 
 # 출력
-output_dir: models/lora/r5-qwen
+output_dir: models/lora/r6-qwen
 logging_steps: 20
 save_strategy: epoch
 save_total_limit: 2

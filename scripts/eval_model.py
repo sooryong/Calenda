@@ -15,7 +15,7 @@ KST = timezone(timedelta(hours=9))
 from rapidfuzz import fuzz
 from tqdm import tqdm
 
-from _common import build_user_block, read_jsonl, safe_json_loads
+from _common import build_user_block, read_jsonl, resolve_when, safe_json_loads
 
 
 TIME_TOLERANCE_MIN = 5  # ±5분 허용
@@ -60,8 +60,14 @@ def location_score(a: str | None, b: str | None) -> float:
     return fuzz.partial_ratio(a, b) / 100.0
 
 
-def score_events(gold_events: list, pred_events: list) -> dict:
-    """가장 단순한 1:1 매칭 (start 시각 기준 최근접). 추후 헝가리안으로 교체 가능."""
+def _start(received_at, ev: dict) -> str | None:
+    """이벤트의 date/time 토큰 → 절대 start ISO (resolver 경유). 채점 단일 기준."""
+    return resolve_when(received_at, ev.get("date"), ev.get("time"),
+                        ev.get("end_time"), ev.get("all_day", False))["start"]
+
+
+def score_events(received_at, gold_events: list, pred_events: list) -> dict:
+    """1:1 매칭. 시각은 gold·pred 모두 resolver로 절대화 후 비교(새 스키마)."""
     if not gold_events and not pred_events:
         return {"event_count_match": True, "title_f1": 1.0, "time_f1": 1.0, "loc_f1": 1.0}
     if len(gold_events) != len(pred_events):
@@ -70,7 +76,7 @@ def score_events(gold_events: list, pred_events: list) -> dict:
     titles, times, locs = [], [], []
     for g, p in zip(gold_events, pred_events):
         titles.append(title_score(g.get("title"), p.get("title")))
-        times.append(1.0 if time_match(g.get("start"), p.get("start")) else 0.0)
+        times.append(1.0 if time_match(_start(received_at, g), _start(received_at, p)) else 0.0)
         locs.append(location_score(g.get("location"), p.get("location")))
 
     def mean(xs): return sum(xs) / max(1, len(xs))
@@ -154,7 +160,7 @@ def main():
         if pred.get("has_schedule") == gold.get("has_schedule"):
             has_sched_correct += 1
 
-        scores = score_events(gold.get("events", []), pred.get("events", []))
+        scores = score_events(sample["received_at"], gold.get("events", []), pred.get("events", []))
         if scores["event_count_match"]:
             event_count_acc += 1
         for k in field_sum:
