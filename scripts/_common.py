@@ -73,10 +73,19 @@ def _add_months(d: _date, n: int) -> _date:
     return _date(y, mo, min(d.day, _calendar.monthrange(y, mo)[1]))
 
 
+_DATE_ALIAS = {
+    "today": "오늘", "tomorrow": "내일", "day after tomorrow": "모레", "overmorrow": "모레",
+    "next week": "다음주", "this weekend": "이번주말", "next weekend": "다음주말",
+}
+
+
 def resolve_date(received_date: _date, token: str | None) -> _date | None:
-    """date 토큰 → 절대 date (received 기준). 인식 못 하면 None. schema.md 어휘표와 1:1."""
+    """date 토큰 → 절대 date (received 기준). 인식 못 하면 None. schema.md 어휘표와 1:1.
+    방어: 모델이 가끔 내는 영어(today/next week 등)는 한국어 토큰으로 정규화, 공백은 허용."""
     if not token:
         return None
+    token = str(token).strip()
+    token = _DATE_ALIAS.get(token.lower(), token).replace(" ", "")
     fixed = {"오늘": 0, "내일": 1, "모레": 2, "글피": 3}
     if token in fixed:
         return received_date + _timedelta(days=fixed[token])
@@ -92,6 +101,9 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
     m = _re.match(r"^(\d+)년후$", token)
     if m:
         return _add_months(received_date, 12 * int(m.group(1)))
+    m = _re.match(r"^(다음주|다다음주)$", token)            # 요일 없는 다음주/다다음주 → 주 단위
+    if m:
+        return received_date + _timedelta(days=7 * {"다음주": 1, "다다음주": 2}[token])
     m = _re.match(r"^(이번주|다음주|다다음주)([월화수목금토일])$", token)
     if m:
         monday = received_date - _timedelta(days=received_date.weekday())
@@ -141,7 +153,9 @@ def resolve_when(received_at, date_token, time_obj, end_time_obj=None, all_day=F
     except Exception:
         return {"start": None, "end": None, "all_day": bool(all_day)}
     d = resolve_date(recv.date(), date_token)
-    if d is None and time_obj:          # 규칙7: 날짜 없고 시간만 → 오늘
+    # 규칙7: 날짜가 '진짜 없을' 때만(빈/None) 시간만 → 오늘.
+    # date가 있었지만 인식 못 한 토큰이면 오늘로 단정하지 않음(잘못된 today 방지).
+    if d is None and time_obj and not (date_token and str(date_token).strip()):
         d = recv.date()
     if d is None:
         return {"start": None, "end": None, "all_day": bool(all_day)}

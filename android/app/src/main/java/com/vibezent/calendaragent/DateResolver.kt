@@ -13,6 +13,13 @@ object DateResolver {
 
     private val WD = "월화수목금토일"
 
+    // 모델이 가끔 내는 영어/별칭 → 한국어 토큰 (scripts/_common._DATE_ALIAS와 동일)
+    private val DATE_ALIAS = mapOf(
+        "today" to "오늘", "tomorrow" to "내일", "day after tomorrow" to "모레",
+        "overmorrow" to "모레", "next week" to "다음주",
+        "this weekend" to "이번주말", "next weekend" to "다음주말",
+    )
+
     /** 수신시각 문자열 → LocalDateTime (tz 무시한 로컬 시계). 파싱 실패 시 null. */
     private fun parseReceived(s: String): LocalDateTime? = try {
         OffsetDateTime.parse(s).toLocalDateTime()
@@ -24,31 +31,36 @@ object DateResolver {
         }
     }
 
-    /** date 토큰 → 절대 LocalDate. 인식 못 하면 null. */
+    /** date 토큰 → 절대 LocalDate. 인식 못 하면 null. 영어 별칭·공백 방어 포함. */
     fun resolveDate(r: LocalDate, token: String?): LocalDate? {
         if (token.isNullOrBlank()) return null
-        when (token) {
+        var t = token.trim()
+        t = (DATE_ALIAS[t.lowercase()] ?: t).replace(" ", "")
+        when (t) {
             "오늘" -> return r
             "내일" -> return r.plusDays(1)
             "모레" -> return r.plusDays(2)
             "글피" -> return r.plusDays(3)
         }
-        Regex("^(\\d+)일후$").find(token)?.let { return r.plusDays(it.groupValues[1].toLong()) }
-        Regex("^(\\d+)주후$").find(token)?.let { return r.plusDays(7L * it.groupValues[1].toLong()) }
-        Regex("^(\\d+)개월후$").find(token)?.let { return r.plusMonths(it.groupValues[1].toLong()) }
-        Regex("^(\\d+)년후$").find(token)?.let { return r.plusYears(it.groupValues[1].toLong()) }
-        Regex("^(이번주|다음주|다다음주)([월화수목금토일])$").find(token)?.let {
+        Regex("^(\\d+)일후$").find(t)?.let { return r.plusDays(it.groupValues[1].toLong()) }
+        Regex("^(\\d+)주후$").find(t)?.let { return r.plusDays(7L * it.groupValues[1].toLong()) }
+        Regex("^(\\d+)개월후$").find(t)?.let { return r.plusMonths(it.groupValues[1].toLong()) }
+        Regex("^(\\d+)년후$").find(t)?.let { return r.plusYears(it.groupValues[1].toLong()) }
+        if (t == "다음주" || t == "다다음주") {                  // 요일 없는 다음주 → 주 단위
+            return r.plusWeeks(if (t == "다다음주") 2L else 1L)
+        }
+        Regex("^(이번주|다음주|다다음주)([월화수목금토일])$").find(t)?.let {
             val weeks = mapOf("이번주" to 0L, "다음주" to 1L, "다다음주" to 2L)[it.groupValues[1]]!!
             val monday = r.minusDays((r.dayOfWeek.value - 1).toLong()).plusWeeks(weeks)
             return monday.plusDays(WD.indexOf(it.groupValues[2]).toLong())
         }
-        if (token == "이번주말" || token == "다음주말") {
+        if (t == "이번주말" || t == "다음주말") {
             val toSat = ((6 - r.dayOfWeek.value) % 7 + 7) % 7   // 다가오는 토요일까지 일수
             val sat = r.plusDays(toSat.toLong())
-            return if (token == "다음주말") sat.plusWeeks(1) else sat
+            return if (t == "다음주말") sat.plusWeeks(1) else sat
         }
-        if (Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(token)) {
-            return try { LocalDate.parse(token) } catch (e: Exception) { null }
+        if (Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(t)) {
+            return try { LocalDate.parse(t) } catch (e: Exception) { null }
         }
         return null
     }
@@ -80,7 +92,8 @@ object DateResolver {
                     endTime: TimeOfDay?, allDay: Boolean): Resolved {
         val recv = parseReceived(receivedAt) ?: return Resolved(null, null, allDay)
         var d = resolveDate(recv.toLocalDate(), date)
-        if (d == null && time != null) d = recv.toLocalDate()       // 규칙7: 날짜 없고 시간만 → 오늘
+        // 규칙7: 날짜가 '진짜 없을' 때만 시간만 → 오늘. 인식 못 한 토큰이면 today 단정 안 함.
+        if (d == null && time != null && date.isNullOrBlank()) d = recv.toLocalDate()
         if (d == null) return Resolved(null, null, allDay)
         if (allDay || time == null) return Resolved(d.toString(), null, allDay)
         val start = "${d}T${resolveTime(time, recv)}:00+09:00"
