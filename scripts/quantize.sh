@@ -22,16 +22,24 @@ NAME="$(basename "$MERGED")"
 
 mkdir -p "$OUT"
 
-# 1. HF → GGUF (FP16)
+# 1. HF → GGUF (FP16)  — PYTHON 환경변수로 venv python 지정 가능 (기본 python)
 echo "[quantize] HF → GGUF FP16"
-python "$LLAMA_CPP/convert_hf_to_gguf.py" "$MERGED" \
+"${PYTHON:-python}" "$LLAMA_CPP/convert_hf_to_gguf.py" "$MERGED" \
   --outfile "$OUT/${NAME}.f16.gguf" \
   --outtype f16
 
-QUANT_BIN="$LLAMA_CPP/build/bin/llama-quantize"
-if [ ! -x "$QUANT_BIN" ]; then
-  QUANT_BIN="$LLAMA_CPP/llama-quantize"  # 구버전 폴백
+# llama-quantize 바이너리 탐색 (CMake build/bin, Windows build_bin/.exe, 루트 폴백 모두 대응)
+QUANT_BIN=""
+for cand in \
+  "$LLAMA_CPP/build/bin/llama-quantize" "$LLAMA_CPP/build/bin/llama-quantize.exe" \
+  "$LLAMA_CPP/build_bin/llama-quantize" "$LLAMA_CPP/build_bin/llama-quantize.exe" \
+  "$LLAMA_CPP/llama-quantize" "$LLAMA_CPP/llama-quantize.exe"; do
+  if [ -f "$cand" ]; then QUANT_BIN="$cand"; break; fi
+done
+if [ -z "$QUANT_BIN" ]; then
+  echo "[quantize] llama-quantize 바이너리를 못 찾음 — $LLAMA_CPP 빌드 확인"; exit 1
 fi
+echo "[quantize] binary: $QUANT_BIN"
 
 # 2. 여러 양자화 레벨
 for Q in Q8_0 Q5_K_M Q4_K_M Q3_K_M IQ3_M; do
