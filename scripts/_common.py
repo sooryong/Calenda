@@ -81,6 +81,157 @@ def build_user_block(record: dict) -> str:
     return "\n".join(parts)
 
 
+import calendar as _calendar
+import re as _re
+from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
+
+_WD_KO = "월화수목금토일"
+
+
+def _add_months(d: _date, n: int) -> _date:
+    y = d.year + (d.month - 1 + n) // 12
+    mo = (d.month - 1 + n) % 12 + 1
+    return _date(y, mo, min(d.day, _calendar.monthrange(y, mo)[1]))
+
+
+def resolve_date(received_date: _date, token: str | None) -> _date | None:
+    """date 토큰 → 절대 date (received 기준). 인식 못 하면 None. schema.md 어휘표와 1:1."""
+    if not token:
+        return None
+    fixed = {"오늘": 0, "내일": 1, "모레": 2, "글피": 3}
+    if token in fixed:
+        return received_date + _timedelta(days=fixed[token])
+    m = _re.match(r"^(\d+)일후$", token)
+    if m:
+        return received_date + _timedelta(days=int(m.group(1)))
+    m = _re.match(r"^(\d+)주후$", token)
+    if m:
+        return received_date + _timedelta(days=7 * int(m.group(1)))
+    m = _re.match(r"^(\d+)개월후$", token)
+    if m:
+        return _add_months(received_date, int(m.group(1)))
+    m = _re.match(r"^(\d+)년후$", token)
+    if m:
+        return _add_months(received_date, 12 * int(m.group(1)))
+    m = _re.match(r"^(이번주|다음주|다다음주)([월화수목금토일])$", token)
+    if m:
+        monday = received_date - _timedelta(days=received_date.weekday())
+        monday += _timedelta(days=7 * {"이번주": 0, "다음주": 1, "다다음주": 2}[m.group(1)])
+        return monday + _timedelta(days=_WD_KO.index(m.group(2)))
+    if token in ("이번주말", "다음주말"):
+        sat = received_date + _timedelta(days=(5 - received_date.weekday()) % 7)
+        return sat + (_timedelta(days=7) if token == "다음주말" else _timedelta())
+    if _re.match(r"^\d{4}-\d{2}-\d{2}$", token):
+        try:
+            return _date.fromisoformat(token)
+        except Exception:
+            return None
+    return None
+
+
+def resolve_time(time_obj: dict | None, received_dt: _datetime) -> str | None:
+    """time {hour,minute,marker} → 'HH:MM'(24h). None이면 None. schema.md 변환표와 1:1.
+    표시어 없는 1~12시는 받은 시각 이후 가장 가까운 쪽(AM/PM), 둘 다 과거면 오후."""
+    if not time_obj:
+        return None
+    h = int(time_obj.get("hour", 0))
+    m = int(time_obj.get("minute") or 0)
+    k = time_obj.get("marker")
+    if k in ("오후", "저녁", "밤", "낮"):
+        if h < 12:
+            h += 12
+    elif k in ("오전", "아침", "새벽"):
+        if h == 12:
+            h = 0
+    elif k == "정오":
+        h, m = 12, 0
+    elif k == "자정":
+        h, m = 0, 0
+    elif k is None and 1 <= h <= 12:
+        am, pm = h % 12, h % 12 + 12
+        rh = received_dt.hour + received_dt.minute / 60
+        h = next((c for c in sorted((am, pm)) if c >= rh), pm)
+    return f"{h:02d}:{m:02d}"
+
+
+def resolve_when(received_at, date_token, time_obj, end_time_obj=None, all_day=False, tz="+09:00") -> dict:
+    """모델의 date/time → 절대 start/end ISO. eval·앱 공용 단일 진실원.
+    반환 {'start': ISO|None, 'end': ISO|None, 'all_day': bool}."""
+    try:
+        recv = received_at if hasattr(received_at, "date") else _datetime.fromisoformat(str(received_at))
+    except Exception:
+        return {"start": None, "end": None, "all_day": bool(all_day)}
+    d = resolve_date(recv.date(), date_token)
+    if d is None and time_obj:          # 규칙7: 날짜 없고 시간만 → 오늘
+        d = recv.date()
+    if d is None:
+        return {"start": None, "end": None, "all_day": bool(all_day)}
+    if all_day or not time_obj:
+        return {"start": d.isoformat(), "end": None, "all_day": bool(all_day)}
+    start = f"{d.isoformat()}T{resolve_time(time_obj, recv)}:00{tz}"
+    end = f"{d.isoformat()}T{resolve_time(end_time_obj, recv)}:00{tz}" if end_time_obj else None
+    return {"start": start, "end": end, "all_day": False}
+
+
+def _gwa(word: str) -> str:
+    """받침 유무에 따라 '와/과'."""
+    ch = word[-1] if word else ""
+    if "가" <= ch <= "힣":
+        return "과" if (ord(ch) - 0xAC00) % 28 else "와"
+    return "와"
+
+
+def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None) -> str:
+    """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·출처(소속)는 앱이 붙인다.
+      누구와: '{참석자}와/과 {활동}'
+      출처:   ' · {발신자}'  (소속 있으면 ' · {발신자} ({소속})', 기관 발신이면 ' · {기관}')
+    예: 저녁식사+[민지] → '민지와 저녁식사';  주간 회의+발신 박과장 → '주간 회의 · 박과장';
+        Kickoff+발신 Sarah Lee/소속 Company → 'Kickoff · Sarah Lee (Company)';  진료+기관 서울내과 → '진료 · 서울내과'."""
+    title = (base_title or "일정").strip()
+    who = [a for a in (attendees or []) if a and a not in title]
+    if who:
+        joined = ", ".join(who)
+        title = f"{joined}{_gwa(joined)} {title}"
+
+    src = None
+    if sender and sender not in ("나", "Me", "me"):
+        s = sender.replace("[Web발신]", "").strip()         # SMS 웹발신 접두 정리
+        if organizer and organizer not in s:
+            src = f"{s} ({organizer})"                      # 외부 개인 + 소속
+        elif organizer:
+            src = organizer                                # 기관 발신(발신자=소속)
+        else:
+            src = s
+    elif organizer:
+        src = organizer
+    if src and src not in title:
+        title = f"{title} · {src}"
+    return title
+
+
+def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
+    """모델 이벤트(date/time 토큰) → 캘린더용 완성 이벤트.
+    시각은 resolve_when으로 절대화, location/attendees/organizer/description/recurrence는 그대로 통과,
+    제목은 compose_title로 조합. ★ location 등 어떤 필드도 누락 없이 캐리."""
+    when = resolve_when(
+        received_at, event.get("date"), event.get("time"),
+        event.get("end_time"), event.get("all_day", False),
+    )
+    return {
+        "title": compose_title(event.get("title"), event.get("attendees"),
+                               event.get("organizer"), sender, channel),
+        "start": when["start"],
+        "end": when["end"],
+        "all_day": when["all_day"],
+        "location": event.get("location"),                 # ← 장소 보존 (필수 표시)
+        "attendees": event.get("attendees", []),
+        "organizer": event.get("organizer"),
+        "description": event.get("description"),
+        "recurrence": event.get("recurrence"),
+        "confidence": event.get("confidence"),
+    }
+
+
 def read_jsonl(path: str | Path) -> Iterator[dict[str, Any]]:
     with open(path, "rb") as f:
         for line in f:
