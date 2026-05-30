@@ -47,4 +47,4 @@ bnb_4bit_compute_dtype: bfloat16
 bnb_4bit_use_double_quant: true
 
 # WandB
-report_to: wandb   # "none"으로 끄기 가능
+report_to: none   # wandb 끄기 기본값 (cell6 WANDB_DISABLED와 이중 차단). 켜려면 wandb로
