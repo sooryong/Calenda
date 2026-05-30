@@ -109,42 +109,98 @@ def make_record(rng, idx, base_d):
                 message=msg, gold_event=ev)
 
 
+def make_negative(rng):
+    """일정이 아닌(has_schedule=false) 메시지. 날짜·시간 단서는 있지만 확정이 아님.
+    목적: 모델이 '날짜/시간 단어 = 일정'으로 과잉 트리거하지 않도록 (round3 오탐 7건 교정)."""
+    rel = rng.choice(["오늘", "내일", "모레", "이번 주말", "다음 주", "이번 주 금요일", "토요일", "일요일"])
+    ttext, _, _ = rng.choice(TIMES)
+    other = rng.choice(FRIENDS + ["팀장", "박과장", "최선임"])
+    act = rng.choice(["점심", "저녁", "회의", "미팅", "약속", "스터디", "등산", "스탠드업"])
+    place = rng.choice(MEET + RESTAURANTS + ACT_PLACES)
+    kind = rng.choices(["question", "cancel", "past", "vague"], weights=[0.45, 0.3, 0.15, 0.1])[0]
+    if kind == "question":          # 제안/질문 — 확정 응답을 기다리는 상태
+        msg = rng.choice([
+            f"{rel} {ttext} {act} 어때요?",
+            f"혹시 {rel} {ttext}에 {place} 가능해요?",
+            f"{rel} {ttext} {act} 시간 돼?",
+            f"{rel} {act} 한번 할까요?",
+            f"{rel} {ttext}쯤 괜찮으세요?",
+        ])
+    elif kind == "cancel":          # 취소/불참 — 등록할 일정 없음
+        msg = rng.choice([
+            f"{rel} {act} 못 갈 것 같아 ㅠㅠ",
+            f"미안 {rel} {ttext} 약속 취소해야 할 듯",
+            f"{rel} {place} {act} 취소됐어요",
+            f"{rel} {ttext} 모임 다음으로 미뤄요",
+        ])
+    elif kind == "past":            # 과거/완료 — 미래 일정 아님
+        msg = rng.choice([
+            f"어제 {act} 잘 끝났어",
+            f"지난주 {place}에서 {act} 좋았지",
+            f"방금 {act} 끝나고 가는 중",
+        ])
+    else:                            # 막연 — 구체 약속 아님
+        msg = rng.choice([
+            f"{rel} 시간 되면 {act} 하자",
+            f"조만간 {act} 한번 봐요",
+            f"{act}는 다음에 날 잡읍시다",
+        ])
+    return dict(channel=rng.choice(["kakao", "kakao", "sms"]), sender=other, message=msg)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=150)
+    ap.add_argument("--n", type=int, default=250)
+    ap.add_argument("--neg-ratio", type=float, default=0.4,
+                    help="음성(has_schedule=false) 비율. round3 양성편향 오탐 교정용.")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default="data/processed/weekend_boost.jsonl")
     ap.add_argument("--append-to", default=None, help="추가로 합칠 학습 파일 (예: data/processed/train.jsonl)")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
-    # 주말-횡단 강조: 금(4)/토(5)/일(6) 발신만 사용
-    pool = []
+    # 양성(주말-횡단): 금(4)/토(5)/일(6) 발신만. 음성: 전 요일(평일 제안/질문 포함 — golden 오탐이 평일 질문이었음).
+    weekend_pool, all_pool = [], []
     d = date(2026, 6, 1)
     while d <= date(2026, 12, 31):
+        all_pool.append(d)
         if d.weekday() in (4, 5, 6):
-            pool.append(d)
+            weekend_pool.append(d)
         d += timedelta(days=1)
 
     records = []
     for i in range(args.n):
-        base_d = rng.choice(pool)
-        r = make_record(rng, i, base_d)
-        ev = r["gold_event"]
-        rec = {
-            "scenario_id": f"weekend_rel_{i:03d}",
-            "received_at": f"{base_d.isoformat()}T{rng.randint(8,22):02d}:00:00+09:00",
-            "channel": r["channel"], "sender": r["sender"], "language": "ko",
-            "message": r["message"],
-            "gold": {"has_schedule": True, "events": [ev]},
-        }
-        # received_at 시각을 make_record와 분리해 재설정했으니 여기서 통일 불필요(위에서 이미 base_d 사용)
+        if rng.random() < args.neg_ratio:
+            base_d = rng.choice(all_pool)
+            r = make_negative(rng)
+            rec = {
+                "scenario_id": f"weekend_rel_{i:03d}",
+                "received_at": f"{base_d.isoformat()}T{rng.randint(8,22):02d}:00:00+09:00",
+                "channel": r["channel"], "sender": r["sender"], "language": "ko",
+                "message": r["message"],
+                "gold": {"has_schedule": False, "events": []},
+            }
+        else:
+            base_d = rng.choice(weekend_pool)
+            r = make_record(rng, i, base_d)
+            rec = {
+                "scenario_id": f"weekend_rel_{i:03d}",
+                "received_at": f"{base_d.isoformat()}T{rng.randint(8,22):02d}:00:00+09:00",
+                "channel": r["channel"], "sender": r["sender"], "language": "ko",
+                "message": r["message"],
+                "gold": {"has_schedule": True, "events": [r["gold_event"]]},
+            }
         records.append(rec)
 
-    # --- 검증: 라벨 정확성 (received 요일 + 오프셋 == start 날짜) ---
+    # --- 검증: 양성만 라벨 정확성(받은 요일+오프셋==start 날짜) 확인 ---
     bad = 0
     wcross = 0
+    npos = nneg = 0
     for rec in records:
+        if not rec["gold"]["events"]:
+            nneg += 1
+            continue
+        npos += 1
         rd = datetime.fromisoformat(rec["received_at"]).date()
         sd = datetime.fromisoformat(rec["gold"]["events"][0]["start"]).date()
         off = (sd - rd).days
@@ -152,15 +208,14 @@ def main():
         exp = 1 if "내일" in msg else 2 if "모레" in msg else 3 if "글피" in msg else None
         if exp is None or off != exp:
             bad += 1
-        # 주말 횡단 = received와 start 사이에 토/일이 끼는지
         if any((rd + timedelta(days=k)).weekday() in (5, 6) for k in range(1, off + 1)):
             wcross += 1
-    assert bad == 0, f"{bad} records have wrong relative-date labels!"
+    assert bad == 0, f"{bad} positive records have wrong relative-date labels!"
 
     with open(args.out, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-    print(f"wrote {len(records)} records -> {args.out}  (weekend-crossing: {wcross}, label errors: {bad})")
+    print(f"wrote {len(records)} -> {args.out}  (양성 {npos}/음성 {nneg}, 주말횡단 {wcross}, label errors {bad})")
 
     if args.append_to:
         with open(args.append_to, "a", encoding="utf-8") as f:

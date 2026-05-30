@@ -48,7 +48,7 @@ def _ev(title, start, location, attendees, desc, conf):
             "recurrence": None, "confidence": conf}
 
 
-def make(rng, base_d, neg_ratio=0.18):
+def make(rng, base_d, neg_ratio=0.35):
     """하나의 멀티턴 레코드 (thread_context + message + gold) 생성.
     neg_ratio 확률로 '미확정'(최종 메시지가 새 제안/유보 → has_schedule=false) 케이스 생성."""
     other = rng.choice(FRIENDS + LEADS)
