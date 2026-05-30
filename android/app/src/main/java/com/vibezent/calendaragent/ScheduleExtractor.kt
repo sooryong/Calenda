@@ -43,7 +43,8 @@ object ScheduleExtractor {
     //   YAML 블록 스칼라(|)라 줄바꿈 보존 + 끝에 개행 1개. 아래도 동일하게 맞춤.
     private const val SYSTEM_PROMPT =
         "당신은 메시지에서 일정 정보를 추출하는 모델입니다.\n" +
-        "입력의 <수신시각>을 기준으로 상대 시간을 절대 시각으로 변환하고,\n" +
+        "오늘/내일/모레/글피 같은 상대 날짜는 <날짜힌트>의 절대일자를 그대로 사용하고,\n" +
+        "그 외 상대 시간은 <수신시각> 기준으로 절대 시각으로 변환하며,\n" +
         "지정된 JSON 스키마에 맞춰 순수 JSON만 출력합니다.\n" +
         "메시지에 명시되지 않은 정보는 절대 만들어내지 않고 null을 씁니다.\n" +
         "<대화내역>이 있으면 그 맥락을 참고하되 추출 대상은 마지막 <메시지>이며,\n" +
@@ -73,13 +74,32 @@ object ScheduleExtractor {
      * thread가 비어있지 않으면 <발신자>와 <메시지> 사이에 <대화내역> 블록을 삽입(멀티턴),
      * 비어있으면 생략(단일 메시지) → 하위호환.
      */
+    /** 수신 날짜 기준 오늘/내일/모레/글피의 절대일자 한 줄. scripts/_common.date_hints와 동일 포맷. */
+    private fun dateHints(receivedAt: String): String? {
+        return try {
+            val datePart = receivedAt.substringBefore('T').trim()
+            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val d = fmt.parse(datePart) ?: return null
+            val cal = java.util.Calendar.getInstance().apply { time = d }
+            val parts = listOf("오늘" to 0, "내일" to 1, "모레" to 2, "글피" to 3).map { (name, off) ->
+                val c = (cal.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_MONTH, off) }
+                val idx = (c.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+                "$name=${fmt.format(c.time)}(${weekdaysKo[idx]})"
+            }
+            "<날짜힌트: ${parts.joinToString(", ")}>"
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun buildUserBlock(channel: String, receivedAt: String, sender: String,
                        message: String, thread: List<ThreadTurn> = emptyList()): String {
         val parts = mutableListOf(
             "<채널: $channel>",
             "<수신시각: ${withWeekday(receivedAt)}>",
-            "<발신자: $sender>",
         )
+        dateHints(receivedAt)?.let { parts.add(it) }
+        parts.add("<발신자: $sender>")
         if (thread.isNotEmpty()) {
             val lines = thread.joinToString("\n") { "[${it.time}] ${it.sender}: ${it.message}" }
             parts.add("<대화내역>\n$lines\n</대화내역>")

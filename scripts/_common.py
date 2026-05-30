@@ -37,6 +37,24 @@ def with_weekday(received_at: str) -> str:
         return s
 
 
+def date_hints(received_at: str) -> str:
+    """수신시각 날짜 기준 오늘/내일/모레/글피의 절대일자를 미리 계산해 한 줄로.
+    0.5B가 요일→날짜 산술(특히 주말 횡단)을 못 맞히는 문제를, '계산은 호스트가 하고
+    모델은 복사만' 하게 만들어 구조적으로 해결. 계산 불가 시 빈 문자열(힌트 생략)."""
+    from datetime import datetime, timedelta
+
+    s = received_at.isoformat() if hasattr(received_at, "isoformat") else str(received_at)
+    try:
+        base = datetime.fromisoformat(s).date()
+    except Exception:
+        return ""
+    parts = []
+    for name, off in (("오늘", 0), ("내일", 1), ("모레", 2), ("글피", 3)):
+        d = base + timedelta(days=off)
+        parts.append(f"{name}={d.isoformat()}({WEEKDAYS_KO[d.weekday()]})")
+    return "<날짜힌트: " + ", ".join(parts) + ">"
+
+
 def build_user_block(record: dict) -> str:
     """학습/추론 공용 user 메시지 빌더.
 
@@ -48,8 +66,11 @@ def build_user_block(record: dict) -> str:
     parts = [
         f"<채널: {record['channel']}>",
         f"<수신시각: {with_weekday(record['received_at'])}>",
-        f"<발신자: {record.get('sender', '')}>",
     ]
+    hint = date_hints(record["received_at"])
+    if hint:
+        parts.append(hint)
+    parts.append(f"<발신자: {record.get('sender', '')}>")
     thread = record.get("thread_context") or []
     if thread:
         lines = "\n".join(
