@@ -2,7 +2,7 @@
 # Kaggle용은 configs/train.yaml(bf16). 차이: 정밀도(fp16) + 라운드 라벨(r9).
 # stable-fp16: train_lora.py가 fp16 모드일 때 베이스를 fp32로 로드(마스터) + fp16 AMP →
 #   T4 텐서코어로 빠름(~8s/step) + bf16급 안정. 순수 fp16(r7) 회귀 회피.
-run_name: r9-qwen-0.5b-lora
+run_name: r10-qwen-0.5b-lora
 
 model_config: configs/model_qwen.yaml
 lora_config:  configs/lora.yaml
@@ -25,7 +25,7 @@ max_grad_norm: 1.0
 seed: 42
 
 # 출력 (Colab은 r9 — Kaggle r8과 구분해 eval 비교 가능)
-output_dir: models/lora/r9-qwen
+output_dir: models/lora/r10-qwen
 logging_steps: 20
 save_strategy: epoch
 save_total_limit: 2
