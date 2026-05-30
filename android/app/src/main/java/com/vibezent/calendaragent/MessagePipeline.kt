@@ -53,7 +53,11 @@ object MessagePipeline {
         }
         // has_schedule=false(아직 협의 중/일정 아님)면 아무것도 안 함
         if (ext.hasSchedule && ext.events.isNotEmpty()) {
-            ScheduleNotifier.notify(appCtx, ext.events.first(), msg)
+            // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산)
+            val event = DateResolver.resolveEvent(
+                ScheduleExtractor.isoOf(msg.timeMillis), msg.sender, ext.events.first(),
+            )
+            ScheduleNotifier.notify(appCtx, event, msg)
         }
     }
 }

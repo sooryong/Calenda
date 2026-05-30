@@ -22,7 +22,7 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private var lastExtraction: Extraction? = null
+    private var lastEvents: List<CalendarEvent> = emptyList()
 
     // 모델 파일 위치는 ModelStore로 중앙화 (백그라운드 수집과 동일 경로 공유)
     private val modelFile: File
@@ -159,12 +159,10 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.empty_message, Toast.LENGTH_SHORT).show()
             return
         }
-        val prompt = ScheduleExtractor.buildPrompt(
-            channel = binding.channelInput.text.toString().ifBlank { "kakao" },
-            receivedAt = binding.receivedAtInput.text.toString().ifBlank { ScheduleExtractor.nowIso() },
-            sender = binding.senderInput.text.toString(),
-            message = message,
-        )
+        val channel = binding.channelInput.text.toString().ifBlank { "kakao" }
+        val receivedAt = binding.receivedAtInput.text.toString().ifBlank { ScheduleExtractor.nowIso() }
+        val sender = binding.senderInput.text.toString()
+        val prompt = ScheduleExtractor.buildPrompt(channel, receivedAt, sender, message)
 
         binding.extractButton.isEnabled = false
         binding.resultText.text = getString(R.string.inferring)
@@ -173,13 +171,14 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val raw = withContext(Dispatchers.Default) { LlamaBridge.complete(prompt, nPredict = 256) }
             val ext = ScheduleExtractor.parse(raw)
-            lastExtraction = ext
-            renderResult(ext)
+            // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산)
+            lastEvents = ext.events.map { DateResolver.resolveEvent(receivedAt, sender, it) }
+            renderResult(ext, lastEvents)
             binding.extractButton.isEnabled = true
         }
     }
 
-    private fun renderResult(ext: Extraction) {
+    private fun renderResult(ext: Extraction, events: List<CalendarEvent>) {
         val sb = StringBuilder()
         if (ext.parseError != null) {
             sb.append("⚠ JSON 파싱 실패: ").append(ext.parseError).append("\n\n")
@@ -189,13 +188,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
         sb.append("has_schedule: ").append(ext.hasSchedule).append("\n")
-        if (!ext.hasSchedule || ext.events.isEmpty()) {
+        if (!ext.hasSchedule || events.isEmpty()) {
             sb.append("\n→ 등록할 일정 없음")
             binding.resultText.text = sb.toString()
             binding.addCalendarButton.visibility = View.GONE
             return
         }
-        ext.events.forEachIndexed { i, e ->
+        events.forEachIndexed { i, e ->
             sb.append("\n[이벤트 ").append(i + 1).append("]\n")
             sb.append("제목: ").append(e.title).append("\n")
             sb.append("시작: ").append(e.start ?: "(없음)").append("\n")
@@ -211,8 +210,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addToCalendar() {
-        val ext = lastExtraction ?: return
-        val event = ext.events.firstOrNull() ?: return
+        val event = lastEvents.firstOrNull() ?: return
         try {
             CalendarInserter.launch(this, event)
         } catch (e: Exception) {
