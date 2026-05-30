@@ -34,7 +34,7 @@ metric_for_best_model: eval_loss
 greater_is_better: false
 
 # 메모리 / 속도
-bf16: true
+bf16: true                      # Kaggle용: bf16 (T4에선 느리지만 안정). Colab용은 configs/train_colab.yaml(fp16)
 fp16: false
 gradient_checkpointing: true    # 켜야 함 — vocab 152k logits가 커서 끄면 T4 16GB OOM
 optim: paged_adamw_8bit

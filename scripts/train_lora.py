@@ -102,9 +102,13 @@ def main():
             bnb_4bit_use_double_quant=cfg.get("bnb_4bit_use_double_quant", True),
         )
 
+    # stable-fp16: fp16 모드일 때 베이스를 fp32로 로드(=fp32 마스터 가중치) + 아래 fp16=True가
+    # AMP autocast/GradScaler로 fp16 연산(T4 텐서코어, 빠름)을 함. 순수 fp16 로드(언더플로/불안정)
+    # 대신 이 방식이 fp16 속도 + bf16급 안정성. (bf16 모드는 그대로 bf16 로드 — 범위 넓어 안전)
+    load_dtype = torch.bfloat16 if cfg.get("bf16") else torch.float32
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg["hf_id"],
-        torch_dtype=torch.bfloat16 if cfg.get("bf16") else torch.float16,
+        torch_dtype=load_dtype,
         device_map="auto",
         trust_remote_code=model_cfg.get("trust_remote_code", False),
         quantization_config=bnb,
