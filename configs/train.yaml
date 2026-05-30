@@ -36,7 +36,7 @@ greater_is_better: false
 # 메모리 / 속도
 bf16: true
 fp16: false
-gradient_checkpointing: true
+gradient_checkpointing: false   # 0.5B는 16GB에 충분 — 끄면 ~30% 빠름
 optim: paged_adamw_8bit
 dataloader_num_workers: 2
 
