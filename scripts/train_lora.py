@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import os
 
-# 단일 GPU 강제 (torch import 전에 설정해야 함). 0.5B는 2-GPU에서 device_map=auto가 모델을
-# 분산 배치해 GPU간 통신으로 느려짐. 하드셋(Kaggle이 미리 0,1로 깔아둬도 1개만 보이게).
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# 단일 실행(python)에서만 단일 GPU 강제 — 0.5B는 2-GPU DataParallel/auto-shard가 느림.
+# torchrun(DDP)으로 띄우면 LOCAL_RANK가 설정되므로 건드리지 않음(각 프로세스가 자기 GPU 사용 → 진짜 병렬).
+if os.environ.get("LOCAL_RANK") is None and os.environ.get("WORLD_SIZE") is None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import argparse
 import json
@@ -86,6 +87,12 @@ def main():
     if torch.cuda.is_available():
         print(f"[train] GPU={torch.cuda.get_device_name(0)} cap={torch.cuda.get_device_capability()} "
               f"visible={torch.cuda.device_count()} → {'bf16' if cfg.get('bf16') else 'fp16'} (config)")
+    # DDP면 유효배치 = per_device × world × accum 이 world배 커짐 → accum을 나눠 유효배치 유지
+    _world = int(os.environ.get("WORLD_SIZE", 1))
+    if _world > 1:
+        _orig = cfg["gradient_accumulation_steps"]
+        cfg["gradient_accumulation_steps"] = max(1, _orig // _world)
+        print(f"[train] DDP world={_world}: grad_accum {_orig}→{cfg['gradient_accumulation_steps']} (유효배치 유지)")
 
     print(f"[train] 모델: {model_cfg['hf_id']}")
     tokenizer = AutoTokenizer.from_pretrained(model_cfg["hf_id"], trust_remote_code=model_cfg.get("trust_remote_code", False))
@@ -106,10 +113,13 @@ def main():
     # AMP autocast/GradScaler로 fp16 연산(T4 텐서코어, 빠름)을 함. 순수 fp16 로드(언더플로/불안정)
     # 대신 이 방식이 fp16 속도 + bf16급 안정성. (bf16 모드는 그대로 bf16 로드 — 범위 넓어 안전)
     load_dtype = torch.bfloat16 if cfg.get("bf16") else torch.float32
+    # DDP(torchrun)면 device_map 미사용 — 각 프로세스가 자기 GPU로 로드하도록 Trainer에 맡김
+    # (device_map='auto'는 분산모드에서 모델을 쪼개거나 에러 → DDP에선 None).
+    _ddp = os.environ.get("LOCAL_RANK") is not None
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg["hf_id"],
         torch_dtype=load_dtype,
-        device_map="auto",
+        device_map=(None if _ddp else "auto"),
         trust_remote_code=model_cfg.get("trust_remote_code", False),
         quantization_config=bnb,
     )
@@ -154,6 +164,8 @@ def main():
         bf16=cfg["bf16"],
         fp16=cfg["fp16"],
         gradient_checkpointing=cfg["gradient_checkpointing"],
+        gradient_checkpointing_kwargs={"use_reentrant": False},  # DDP+checkpointing 안정
+        ddp_find_unused_parameters=False,                        # LoRA: 동결 베이스 → unused 아님
         optim=cfg["optim"],
         dataloader_num_workers=cfg["dataloader_num_workers"],
         report_to=cfg.get("report_to", "none"),
