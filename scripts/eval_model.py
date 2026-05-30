@@ -5,6 +5,10 @@
 """
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")   # 단일 GPU (device_map auto의 2-GPU 분산 방지)
+
 import argparse
 import json
 from datetime import datetime, timedelta, timezone

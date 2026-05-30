@@ -7,9 +7,14 @@
 """
 from __future__ import annotations
 
+import os
+
+# 단일 GPU 강제 (torch import 전에 설정해야 함). 0.5B는 2-GPU DataParallel 오버헤드가
+# 실제 연산보다 커서 단일 GPU가 빠름. 이미 지정돼 있으면(고급 사용자 override) 존중.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+
 import argparse
 import json
-import os
 from pathlib import Path
 
 import yaml
