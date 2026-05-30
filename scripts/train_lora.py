@@ -81,14 +81,11 @@ def main():
     )
     from trl import SFTTrainer, SFTConfig
 
-    # GPU 세대에 맞춰 정밀도 확정: capability>=8(A100)만 bf16, 그 외(T4 7.5/V100/P100)는 fp16.
-    # torch 2.10의 is_bf16_supported가 T4도 True라 cell10 체크가 부정확 → 여기서 강제.
-    # (T4에서 bf16은 전용코어가 없어 에뮬레이션 → fp16 대비 수십 배 느림)
+    # 정밀도는 config 따름 (bf16). 큰 vocab(152k)에서 fp16은 softmax 정밀도 문제로 품질↓
+    # (r7 fp16 회귀) → bf16 사용. T4에선 bf16이 에뮬레이션이라 느리지만 품질 우선.
     if torch.cuda.is_available():
-        _cap = torch.cuda.get_device_capability()[0]
-        cfg["bf16"], cfg["fp16"] = (_cap >= 8), (_cap < 8)
         print(f"[train] GPU={torch.cuda.get_device_name(0)} cap={torch.cuda.get_device_capability()} "
-              f"visible={torch.cuda.device_count()} → {'bf16' if cfg['bf16'] else 'fp16'}")
+              f"visible={torch.cuda.device_count()} → {'bf16' if cfg.get('bf16') else 'fp16'} (config)")
 
     print(f"[train] 모델: {model_cfg['hf_id']}")
     tokenizer = AutoTokenizer.from_pretrained(model_cfg["hf_id"], trust_remote_code=model_cfg.get("trust_remote_code", False))
