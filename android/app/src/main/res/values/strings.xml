@@ -35,4 +35,20 @@
     <string name="collect_status">카톡 알림: %1$s · 문자: %2$s</string>
     <string name="on">켜짐 ✓</string>
     <string name="off">꺼짐</string>
+
+    <!-- 이벤트함 (Phase C) -->
+    <string name="title_inbox">이벤트함</string>
+    <string name="open_inbox">이벤트함 열기</string>
+    <string name="inbox_empty">감지된 일정이 없습니다.\n메시지가 오면 여기에 모입니다.</string>
+    <string name="status_pending">대기</string>
+    <string name="status_added">추가됨</string>
+    <string name="status_auto">자동등록</string>
+    <string name="status_dismissed">무시됨</string>
+    <string name="act_add">캘린더에 추가</string>
+    <string name="act_readd">다시 추가</string>
+    <string name="act_dismiss">무시</string>
+    <string name="act_undo">되돌리기</string>
+    <string name="act_edit">편집</string>
+    <string name="inbox_no_calendar">캘린더 앱에서 저장을 완료하세요</string>
+    <string name="calendar_add_failed">캘린더 추가 실패</string>
 </resources>

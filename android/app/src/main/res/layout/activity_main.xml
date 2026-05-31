@@ -10,6 +10,13 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 이벤트함 바로가기 (감지 일정 목록) -->
+        <Button
+            android:id="@+id/openInboxButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/open_inbox" />
+
         <!-- 1. 모델 -->
         <TextView
             android:layout_width="wrap_content"

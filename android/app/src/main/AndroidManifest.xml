@@ -45,6 +45,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- 이벤트함 (감지 일정 목록/관리) -->
+        <activity
+            android:name=".EventListActivity"
+            android:exported="false" />
+
         <!-- 알림 액션(추가/무시/되돌리기) 처리. 앱 내부 전용. -->
         <receiver
             android:name=".EventActionReceiver"

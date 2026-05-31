@@ -50,6 +50,9 @@ class MainActivity : AppCompatActivity() {
 
         refreshModelStatus()
 
+        binding.openInboxButton.setOnClickListener {
+            startActivity(Intent(this, EventListActivity::class.java))
+        }
         binding.loadModelButton.setOnClickListener {
             if (modelFile.exists()) loadModel() else pickModelFile()
         }
@@ -179,6 +182,13 @@ class MainActivity : AppCompatActivity() {
             // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산)
             lastEvents = ext.events.map { DateResolver.resolveEvent(receivedAt, sender, it) }
             renderResult(ext, lastEvents)
+            // 수동 추출도 이벤트함에 적재(상태=대기) → 이벤트함에서 확인/추가/편집 가능 + 학습 캡처.
+            if (ext.parseError == null && ext.hasSchedule && lastEvents.isNotEmpty()) {
+                EventRepository.from(this@MainActivity).save(
+                    lastEvents.first(), channel, sender, message, EventStatus.PENDING,
+                    receivedAt = receivedAt, modelRawJson = ext.rawJson, threadJson = null,
+                )
+            }
             binding.extractButton.isEnabled = true
         }
     }
