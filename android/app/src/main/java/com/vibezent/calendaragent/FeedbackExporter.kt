@@ -43,7 +43,8 @@ object FeedbackExporter {
                 .put("language", "ko")
                 .put("message", r.rawMessage)
                 .put("gold", gold)
-                .put("_feedback", r.status.name)   // 출처 표시(라운드 큐레이션·필터용)
+                // 출처 표시(라운드 큐레이션·필터용). EDITED는 date가 절대일자일 수 있어 상대화 검토 필요.
+                .put("_feedback", if (r.editedJson != null) "EDITED" else r.status.name)
             r.threadJson?.let { obj.put("thread_context", JSONArray(it)) }
             sb.append(obj.toString()).append('\n')
             pairs++

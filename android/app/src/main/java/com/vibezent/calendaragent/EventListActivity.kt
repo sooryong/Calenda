@@ -1,5 +1,6 @@
 package com.vibezent.calendaragent
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -21,7 +22,7 @@ class EventListActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityEventListBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(onPrimary = ::onPrimary, onSecondary = ::onSecondary)
+    private val adapter = EventAdapter(onPrimary = ::onPrimary, onSecondary = ::onSecondary, onEdit = ::onEdit)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +55,11 @@ class EventListActivity : AppCompatActivity() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { repo.setStatus(e.id, EventStatus.DISMISSED, null) }
         }
+    }
+
+    /** 편집: 편집 화면 열기. */
+    private fun onEdit(e: DetectedEvent) {
+        startActivity(Intent(this, EventEditActivity::class.java).putExtra(EventEditActivity.EXTRA_ID, e.id))
     }
 
     private fun addToCalendar(e: DetectedEvent) {

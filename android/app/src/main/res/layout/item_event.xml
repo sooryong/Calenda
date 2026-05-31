@@ -60,6 +60,14 @@
             android:text="@string/act_add" />
 
         <Button
+            android:id="@+id/btnEdit"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/act_edit" />
+
+        <Button
             android:id="@+id/btnSecondary"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="0dp"

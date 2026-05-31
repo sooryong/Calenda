@@ -50,6 +50,11 @@
             android:name=".EventListActivity"
             android:exported="false" />
 
+        <!-- 일정 편집 -->
+        <activity
+            android:name=".EventEditActivity"
+            android:exported="false" />
+
         <!-- 알림 액션(추가/무시/되돌리기) 처리. 앱 내부 전용. -->
         <receiver
             android:name=".EventActionReceiver"

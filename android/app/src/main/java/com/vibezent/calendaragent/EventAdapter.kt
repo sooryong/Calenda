@@ -20,6 +20,7 @@ import java.util.Locale
 class EventAdapter(
     private val onPrimary: (DetectedEvent) -> Unit,
     private val onSecondary: (DetectedEvent) -> Unit,
+    private val onEdit: (DetectedEvent) -> Unit,
 ) : ListAdapter<DetectedEvent, EventAdapter.VH>(DIFF) {
 
     inner class VH(val b: ItemEventBinding) : RecyclerView.ViewHolder(b.root)
@@ -73,6 +74,7 @@ class EventAdapter(
         }
         b.btnPrimary.setOnClickListener { onPrimary(e) }
         b.btnSecondary.setOnClickListener { onSecondary(e) }
+        b.btnEdit.setOnClickListener { onEdit(e) }
     }
 
     private fun prettyTime(start: String?, allDay: Boolean): String {

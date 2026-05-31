@@ -51,4 +51,17 @@
     <string name="act_edit">편집</string>
     <string name="inbox_no_calendar">캘린더 앱에서 저장을 완료하세요</string>
     <string name="calendar_add_failed">캘린더 추가 실패</string>
+
+    <!-- 편집 화면 (Phase C-2) -->
+    <string name="edit_title">일정 편집</string>
+    <string name="field_title_hint">제목</string>
+    <string name="field_location_hint">장소 (없으면 비움)</string>
+    <string name="field_attendees_hint">참석자 (쉼표로 구분)</string>
+    <string name="field_desc_hint">메모</string>
+    <string name="pick_date">날짜</string>
+    <string name="pick_time">시간</string>
+    <string name="all_day">종일</string>
+    <string name="save">저장</string>
+    <string name="save_and_add">저장 후 캘린더에 추가</string>
+    <string name="saved">저장됨</string>
 </resources>
