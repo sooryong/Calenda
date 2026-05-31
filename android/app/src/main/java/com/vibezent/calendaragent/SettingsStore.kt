@@ -1,0 +1,41 @@
+package com.vibezent.calendaragent
+
+import android.content.Context
+
+/**
+ * 사용자 설정 (SharedPreferences). 등록 정책·채널 토글의 단일 출처.
+ * 파이프라인/라우터/UI가 공유한다.
+ */
+class SettingsStore(ctx: Context) {
+    private val prefs = ctx.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    /** 고신뢰도 자동 등록 on/off. */
+    var autoAddEnabled: Boolean
+        get() = prefs.getBoolean(K_AUTO_ADD, true)
+        set(v) = prefs.edit().putBoolean(K_AUTO_ADD, v).apply()
+
+    /** 이 값 이상이면 자동 등록, 미만이면 확인 알림. */
+    var confidenceThreshold: Float
+        get() = prefs.getFloat(K_THRESHOLD, 0.85f)
+        set(v) = prefs.edit().putFloat(K_THRESHOLD, v).apply()
+
+    fun channelEnabled(channel: String): Boolean =
+        prefs.getBoolean(keyChannel(channel), true)
+
+    fun setChannelEnabled(channel: String, enabled: Boolean) =
+        prefs.edit().putBoolean(keyChannel(channel), enabled).apply()
+
+    /** 자동 수집(포그라운드 서비스) 사용 여부 — 사용자가 토글. */
+    var collectorEnabled: Boolean
+        get() = prefs.getBoolean(K_COLLECTOR, false)
+        set(v) = prefs.edit().putBoolean(K_COLLECTOR, v).apply()
+
+    private fun keyChannel(channel: String) = "channel_$channel"
+
+    companion object {
+        private const val K_AUTO_ADD = "auto_add"
+        private const val K_THRESHOLD = "confidence_threshold"
+        private const val K_COLLECTOR = "collector_enabled"
+        fun from(ctx: Context) = SettingsStore(ctx)
+    }
+}

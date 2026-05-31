@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -68,4 +69,15 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // 이벤트함 영속화 (Room). KSP 사용 — kapt는 Kotlin 2.2 메타데이터를 못 읽어 실패(2.0까지만).
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    // UI(이벤트함 목록·화면) + 생명주기 (Phase 3에서 사용)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
 }

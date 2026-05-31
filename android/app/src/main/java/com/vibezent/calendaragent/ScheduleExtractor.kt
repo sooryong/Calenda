@@ -132,6 +132,19 @@ object ScheduleExtractor {
     fun clockOf(millis: Long): String =
         SimpleDateFormat("HH:mm", Locale.US).format(Date(millis))
 
+    /** 멀티턴 대화내역 → JSON 문자열(학습 페어 thread_context 형식). 비어있으면 null. */
+    fun threadToJson(thread: List<ThreadTurn>): String? {
+        if (thread.isEmpty()) return null
+        val arr = org.json.JSONArray()
+        for (t in thread) {
+            arr.put(
+                org.json.JSONObject()
+                    .put("time", t.time).put("sender", t.sender).put("message", t.message),
+            )
+        }
+        return arr.toString()
+    }
+
     /** 모델 raw 출력에서 JSON 추출 + 파싱(새 스키마: date 토큰 + time 객체). 코드펜스 있으면 제거. */
     fun parse(raw: String): Extraction {
         val cleaned = stripFences(raw).trim()

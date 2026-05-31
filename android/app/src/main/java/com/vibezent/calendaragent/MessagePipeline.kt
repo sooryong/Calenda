@@ -26,21 +26,23 @@ object MessagePipeline {
     /** 리시버/리스너에서 호출. applicationContext를 넘길 것. */
     fun onMessage(appCtx: Context, msg: IncomingMessage) {
         if (msg.body.isBlank()) return
+        if (!SettingsStore.from(appCtx).channelEnabled(msg.channel)) return  // 채널 토글 OFF
         val isNew = ConversationBuffer.add(msg)
         if (!isNew) return                                   // 중복 알림 재게시 등
         if (!ScheduleHeuristics.looksScheduleRelated(msg.body)) return  // 배터리 절약 사전 필터
         worker.launch { runInference(appCtx, msg) }
     }
 
-    private fun runInference(appCtx: Context, msg: IncomingMessage) {
+    private suspend fun runInference(appCtx: Context, msg: IncomingMessage) {
         if (!ModelStore.ensureLoaded(appCtx)) {
             Log.d(TAG, "model not available — skip")
             return
         }
+        val receivedAt = ScheduleExtractor.isoOf(msg.timeMillis)
         val thread = ConversationBuffer.contextBefore(msg.conversationKey)
         val prompt = ScheduleExtractor.buildPrompt(
             channel = msg.channel,
-            receivedAt = ScheduleExtractor.isoOf(msg.timeMillis),
+            receivedAt = receivedAt,
             sender = msg.sender,
             message = msg.body,
             thread = thread,
@@ -54,10 +56,22 @@ object MessagePipeline {
         // has_schedule=false(아직 협의 중/일정 아님)면 아무것도 안 함
         if (ext.hasSchedule && ext.events.isNotEmpty()) {
             // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산)
-            val event = DateResolver.resolveEvent(
-                ScheduleExtractor.isoOf(msg.timeMillis), msg.sender, ext.events.first(),
+            val event = DateResolver.resolveEvent(receivedAt, msg.sender, ext.events.first())
+            // 이벤트함에 영속화(상태=대기). 중복(dedupeKey)이면 null → 알림 생략.
+            // receivedAt/modelRawJson/threadJson = incremental-learning 페어 재구성용 캡처.
+            // 등록 정책(고신뢰도 자동 추가 / 저신뢰도 확인)은 EventRouter가 결정.
+            val repo = EventRepository.from(appCtx)
+            val id = repo.save(
+                event, msg.channel, msg.sender, msg.body, EventStatus.PENDING,
+                receivedAt = receivedAt,
+                modelRawJson = ext.rawJson,
+                threadJson = ScheduleExtractor.threadToJson(thread),
             )
-            ScheduleNotifier.notify(appCtx, event, msg)
+            if (id != null) {
+                EventRouter.route(appCtx, repo, id, event, msg)
+            } else {
+                Log.d(TAG, "duplicate event — skip")
+            }
         }
     }
 }

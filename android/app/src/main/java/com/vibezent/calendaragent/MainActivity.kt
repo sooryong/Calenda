@@ -63,7 +63,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
         binding.smsPermButton.setOnClickListener {
-            requestPerms.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.POST_NOTIFICATIONS))
+            requestPerms.launch(arrayOf(
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.READ_CALENDAR,   // 고신뢰도 자동 등록·빠른 추가에 필요
+                Manifest.permission.WRITE_CALENDAR,
+            ))
         }
     }
 
