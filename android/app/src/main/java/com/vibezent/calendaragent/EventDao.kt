@@ -62,7 +62,15 @@ interface EventDao {
     @Query("DELETE FROM detected_events WHERE status = :status")
     suspend fun clearByStatus(status: EventStatus)
 
-    /** 학습 페어 후보: 사용자 판정이 끝난 행(추가/자동추가/무시). status는 enum name으로 저장됨. */
-    @Query("SELECT * FROM detected_events WHERE status IN ('ADDED', 'AUTO_ADDED', 'DISMISSED') ORDER BY createdAt ASC")
-    suspend fun trainingCandidates(): List<DetectedEvent>
+    /** 학습 페어 후보 중 아직 안 내보낸(신규) 것. status는 enum name으로 저장됨. */
+    @Query("SELECT * FROM detected_events WHERE status IN ('ADDED', 'AUTO_ADDED', 'DISMISSED') AND exported = 0 ORDER BY createdAt ASC")
+    suspend fun newTrainingCandidates(): List<DetectedEvent>
+
+    /** 신규(미전송) 학습 후보 개수 — 내보내기 버튼 활성화 임계(10) 판단용. */
+    @Query("SELECT COUNT(*) FROM detected_events WHERE status IN ('ADDED', 'AUTO_ADDED', 'DISMISSED') AND exported = 0")
+    fun observeNewCandidateCount(): Flow<Int>
+
+    /** 내보낸 신규 후보를 전송됨으로 표시(다음 신규 카운트에서 제외). */
+    @Query("UPDATE detected_events SET exported = 1 WHERE status IN ('ADDED', 'AUTO_ADDED', 'DISMISSED') AND exported = 0")
+    suspend fun markDecidedExported()
 }

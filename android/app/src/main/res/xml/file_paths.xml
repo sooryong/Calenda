@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- getExternalFilesDir(null)/feedback/ — 학습 데이터 JSONL 공유 경로 -->
+    <external-files-path name="feedback" path="feedback/" />
+</paths>

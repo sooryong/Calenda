@@ -40,6 +40,7 @@ data class DetectedEvent(
     val createdAt: Long,
     val calendarEventId: Long? = null,  // 자동/수동 등록 시 CalendarProvider event _id
     val registeredAt: Long? = null,     // 캘린더 등록된 시각(ms). 대시보드 '오늘 등록' 필터용
+    val exported: Boolean = false,      // 학습 데이터로 이미 내보냈는지(신규 누적 카운트용)
 
     // ── incremental learning 캡처 (학습 페어 재구성용) ──────────────────
     val receivedAt: String = "",       // 원본 메시지 수신시각 ISO (학습 입력의 <수신시각>)

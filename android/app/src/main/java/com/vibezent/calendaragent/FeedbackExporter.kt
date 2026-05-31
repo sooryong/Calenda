@@ -25,7 +25,8 @@ object FeedbackExporter {
     data class Result(val file: File, val pairs: Int, val skipped: Int)
 
     suspend fun export(ctx: Context): Result {
-        val rows = EventRepository.from(ctx).trainingCandidates()
+        val repo = EventRepository.from(ctx)
+        val rows = repo.newTrainingCandidates()   // 신규(미전송)만
         val sb = StringBuilder()
         var pairs = 0
         var skipped = 0
@@ -52,6 +53,7 @@ object FeedbackExporter {
         val dir = File(ctx.getExternalFilesDir(null), "feedback").apply { mkdirs() }
         val file = File(dir, "feedback_export.jsonl")
         file.writeText(sb.toString())
+        repo.markDecidedExported()   // 보낸 신규분을 전송됨 표시 → 신규 카운트 리셋
         return Result(file, pairs, skipped)
     }
 

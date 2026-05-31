@@ -50,7 +50,11 @@ class EventRepository(private val dao: EventDao) {
     }
     suspend fun delete(ev: DetectedEvent) = dao.delete(ev)
     suspend fun clearDismissed() = dao.clearByStatus(EventStatus.DISMISSED)
-    suspend fun trainingCandidates(): List<DetectedEvent> = dao.trainingCandidates()
+
+    /** 학습 데이터 내보내기 — 신규(미전송) 후보. */
+    fun newCandidateCount(): Flow<Int> = dao.observeNewCandidateCount()
+    suspend fun newTrainingCandidates(): List<DetectedEvent> = dao.newTrainingCandidates()
+    suspend fun markDecidedExported() = dao.markDecidedExported()
 
     companion object {
         fun from(ctx: Context): EventRepository = EventRepository(AppDatabase.get(ctx).eventDao())

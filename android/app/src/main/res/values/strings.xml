@@ -93,10 +93,15 @@
     <string name="battery_exempt">배터리 최적화 제외 요청</string>
 
     <string name="learning_label">학습 데이터</string>
-    <string name="export_feedback">학습 데이터 내보내기 (JSONL)</string>
-    <string name="export_desc">추가·무시·편집 기록을 학습 페어로 내보냅니다. 기기 안에만 저장되며 자동 업로드는 없습니다.</string>
-    <string name="export_running">내보내는 중…</string>
-    <string name="export_result">%1$d건 내보냄 (스킵 %2$d)\n%3$s</string>
+    <string name="export_desc">추가·무시·편집 기록을 모델 성능 개선(학습) 목적으로 soo@vibezent.com 에 보냅니다. 신규 10건 이상 모이면 보낼 수 있고, 메시지 내용이 포함됩니다.</string>
+    <string name="export_feedback">학습 데이터 보내기 (%1$d건)</string>
+    <string name="export_locked">학습 데이터 %1$d/%2$d (10건부터 보내기)</string>
+    <string name="export_confirm_title">학습 데이터 보내기</string>
+    <string name="export_confirm_msg">모델 성능 개선(학습) 목적으로 데이터를 soo@vibezent.com 으로 보냅니다.\n메시지 내용이 포함됩니다. 보내시겠어요?</string>
+    <string name="export_confirm_ok">보내기</string>
+    <string name="export_mail_subject">Calendar Agent 학습 데이터</string>
+    <string name="export_mail_body">모델 학습용 피드백 %1$d건입니다. (메시지 내용 포함)</string>
+    <string name="export_chooser">학습 데이터 보내기</string>
 
     <!-- 온보딩 (Phase C-4) -->
     <string name="onboarding_title">처음 설정</string>

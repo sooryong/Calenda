@@ -6,21 +6,27 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.vibezent.calendaragent.databinding.ActivitySettingsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 설정: 자동 등록 토글·신뢰도 임계값·채널 토글 + 백그라운드 상주 + 학습 데이터 내보내기.
- * Gmail은 별도 로그인 없이 알림 접근(카톡과 동일)으로 수집한다.
+ * 설정: 자동 등록 토글·신뢰도 임계값·채널 토글·백그라운드 상주 + 학습 데이터 보내기.
+ * 학습 데이터: 신규(미전송) 누적이 임계(10) 이상일 때만 전송 가능. 동의 후 soo@vibezent.com으로 공유 전송.
+ * Gmail은 별도 로그인 없이 알림 접근으로 수집.
  */
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { SettingsStore.from(this) }
+    private val repo by lazy { EventRepository.from(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,26 +75,60 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        // 학습 데이터 내보내기
-        binding.exportButton.setOnClickListener { exportFeedback() }
+        // 학습 데이터 보내기 — 신규 10건 이상일 때만 활성화
+        binding.exportButton.isEnabled = false
+        binding.exportButton.setOnClickListener { confirmAndShare() }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                repo.newCandidateCount().collect { n -> updateExportButton(n) }
+            }
+        }
 
         // 디버그(수동 추출)
         binding.debugButton.setOnClickListener { startActivity(Intent(this, DebugActivity::class.java)) }
     }
 
-    private fun exportFeedback() {
+    private fun updateExportButton(n: Int) {
+        val ready = n >= EXPORT_THRESHOLD
+        binding.exportButton.isEnabled = ready
+        binding.exportButton.text =
+            if (ready) getString(R.string.export_feedback, n)
+            else getString(R.string.export_locked, n, EXPORT_THRESHOLD)
+    }
+
+    private fun confirmAndShare() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.export_confirm_title)
+            .setMessage(R.string.export_confirm_msg)
+            .setPositiveButton(R.string.export_confirm_ok) { _, _ -> exportAndShare() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun exportAndShare() {
         binding.exportButton.isEnabled = false
-        binding.exportResult.text = getString(R.string.export_running)
         lifecycleScope.launch {
             val res = withContext(Dispatchers.IO) { FeedbackExporter.export(this@SettingsActivity) }
-            binding.exportResult.text = getString(R.string.export_result, res.pairs, res.skipped, res.file.absolutePath)
-            // 결과가 화면 하단이라 스크롤이 필요 → Toast로 즉시 확인 가능하게.
-            Toast.makeText(
-                this@SettingsActivity,
-                getString(R.string.export_result, res.pairs, res.skipped, res.file.name),
-                Toast.LENGTH_LONG,
-            ).show()
-            binding.exportButton.isEnabled = true
+            try {
+                val uri = FileProvider.getUriForFile(this@SettingsActivity, "$packageName.fileprovider", res.file)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(COLLECT_EMAIL))
+                    putExtra(Intent.EXTRA_SUBJECT, getString(R.string.export_mail_subject))
+                    putExtra(Intent.EXTRA_TEXT, getString(R.string.export_mail_body, res.pairs))
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(send, getString(R.string.export_chooser)))
+            } catch (e: Exception) {
+                Toast.makeText(this@SettingsActivity, R.string.calendar_add_failed, Toast.LENGTH_SHORT).show()
+            }
+            // 카운트(Flow)가 0으로 갱신되며 버튼은 자동 비활성화됨.
         }
+    }
+
+    companion object {
+        private const val EXPORT_THRESHOLD = 10
+        private const val COLLECT_EMAIL = "soo@vibezent.com"
     }
 }
