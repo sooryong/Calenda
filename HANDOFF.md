@@ -23,7 +23,9 @@
 
 ## 3. 다음 라운드 (품질 보강) — plateau는 아직
 
-- **location 오추출**: 사람 이름이 location으로 새는 케이스(예: "정원구 대표"→location "정원구"). 시각은 정확하므로 우선순위는 낮지만 다음 라운드 타깃.
+- **location 오추출** (사람 이름이 장소로 샘, 예: "정원구 대표"→location "정원구"; `구`/`동` 행정구역 접미사 오인):
+  - ✅ **A 적용됨**: resolver 가드 — location이 참석자 이름의 일부면 null. `_common._drop_personlike_location` + 앱 `DateResolver.dropPersonlikeLocation`(둘이 미러). 재빌드에 포함.
+  - ⏳ **B (다음 라운드, 근본 교정)**: `구/동/읍/면`으로 끝나는 **사람 이름**이 attendees로 가고 location은 null이어야 하는 대조 케이스를 소량(~30~50건) 추가. 모델이 원인 자체를 학습 → 가드 의존 줄임.
 - **음성 보강은 소량·다양만**: 대량 템플릿 음성/맨시각(gen_discipline)은 over-trigger 회귀를 부름 → 제거됨. 음성:양성 ~40% 균형 유지.
 - 약점 케이스는 `scripts/eval_model.py`가 `data/failures/round_latest.jsonl`에 저장 → 다음 라운드 데이터 생성에 반영.
 

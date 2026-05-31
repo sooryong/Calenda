@@ -130,6 +130,19 @@ object DateResolver {
         return title
     }
 
+    /** 사람 이름이 장소로 오추출된 경우 제거. location이 참석자 이름의 일부(또는 그 반대)면
+     *  사람≠장소이므로 null. 예: '정원구' ⊂ '정원구 대표' → null ('구' 행정구역 접미사 오인).
+     *  (_common._drop_personlike_location 미러 — 둘을 함께 바꿔야 함.) */
+    fun dropPersonlikeLocation(location: String?, attendees: List<String>): String? {
+        val loc = location?.trim() ?: return location
+        if (loc.length < 2 || attendees.isEmpty()) return location
+        for (a in attendees) {
+            val name = a.trim()
+            if (name.isNotEmpty() && (name.contains(loc) || loc.contains(name))) return null
+        }
+        return location
+    }
+
     /** 모델 추출 이벤트 → 캘린더용 CalendarEvent (시각 변환 + 제목 조합 + 장소 등 보존). */
     fun resolveEvent(receivedAt: String, sender: String?, ev: ExtractedEvent): CalendarEvent {
         val w = resolveWhen(receivedAt, ev.date, ev.time, ev.endTime, ev.allDay)
@@ -138,7 +151,7 @@ object DateResolver {
             start = w.start,
             end = w.end,
             allDay = w.allDay,
-            location = ev.location,
+            location = dropPersonlikeLocation(ev.location, ev.attendees),
             attendees = ev.attendees,
             description = ev.description,
             recurrence = ev.recurrence,
