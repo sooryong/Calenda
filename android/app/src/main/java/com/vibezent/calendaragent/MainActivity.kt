@@ -1,13 +1,10 @@
 package com.vibezent.calendaragent
 
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -64,22 +61,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(candidates: List<DetectedEvent>, registered: List<DetectedEvent>) {
-        // 채널별 '등록' 현황 칩
-        chip(binding.chipKakao, getString(R.string.dash_ch_kakao), registered.count { it.channel == "kakao" })
-        chip(binding.chipSms, getString(R.string.dash_ch_sms), registered.count { it.channel == "sms" })
-        chip(binding.chipGmail, getString(R.string.dash_ch_gmail), registered.count { it.channel == "gmail" })
+        // 카테고리별 현황 (숫자=메인색). 카톡/문자/Gmail=오늘 등록 건수, 예비=미등록 후보 수.
+        binding.countKakao.text = registered.count { it.channel == "kakao" }.toString()
+        binding.countSms.text = registered.count { it.channel == "sms" }.toString()
+        binding.countGmail.text = registered.count { it.channel == "gmail" }.toString()
+        binding.countPending.text = candidates.size.toString()
 
         // 예비 먼저(확인 필요), 그다음 오늘 등록
         val list = candidates + registered
         adapter.submitList(list)
         binding.emptyView.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
-    }
-
-    /** 채널 칩: "카톡 N". 등록>0이면 테마 보라, 0이면 흐림. */
-    private fun chip(tv: TextView, label: String, n: Int) {
-        tv.text = getString(R.string.dash_chip, label, n)
-        val color = if (n > 0) R.color.purple_500 else R.color.chip_zero
-        tv.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, color))
     }
 
     private fun startOfToday(): Long = Calendar.getInstance().apply {
