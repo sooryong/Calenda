@@ -11,7 +11,7 @@ android {
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "com.vibezent.calendaragent"
+        applicationId = "com.calendaragent"   // 설치 식별자(=OAuth 클라이언트 패키지). namespace(코드 패키지)와 별개.
         minSdk = 33
         targetSdk = 36
         versionCode = 1
