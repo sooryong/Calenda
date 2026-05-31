@@ -11,6 +11,7 @@ class EventRepository(private val dao: EventDao) {
 
     val all: Flow<List<DetectedEvent>> get() = dao.observeAll()
     fun byStatus(s: EventStatus): Flow<List<DetectedEvent>> = dao.observeByStatus(s)
+    fun since(ms: Long): Flow<List<DetectedEvent>> = dao.observeSince(ms)
     fun pendingCount(): Flow<Int> = dao.countByStatus(EventStatus.PENDING)
 
     /**

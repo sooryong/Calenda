@@ -22,6 +22,10 @@ interface EventDao {
     @Query("SELECT * FROM detected_events WHERE status = :status ORDER BY createdAt DESC")
     fun observeByStatus(status: EventStatus): Flow<List<DetectedEvent>>
 
+    /** 특정 시각 이후 감지분 (대시보드 '오늘' 필터용). */
+    @Query("SELECT * FROM detected_events WHERE createdAt >= :since ORDER BY createdAt DESC")
+    fun observeSince(since: Long): Flow<List<DetectedEvent>>
+
     @Query("SELECT COUNT(*) FROM detected_events WHERE status = :status")
     fun countByStatus(status: EventStatus): Flow<Int>
 

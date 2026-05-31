@@ -80,4 +80,8 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+
+    // Gmail 수집 (Phase D): Google 로그인(OAuth) + 주기 폴링(WorkManager). Gmail REST는 HttpURLConnection로 직접 호출.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

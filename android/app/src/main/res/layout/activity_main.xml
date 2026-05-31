@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
@@ -10,157 +10,96 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- 이벤트함 바로가기 (감지 일정 목록) -->
-        <Button
-            android:id="@+id/openInboxButton"
+        <!-- 상단바: 제목 + 설정 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/open_inbox" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <Button
-            android:id="@+id/openSettingsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/open_settings" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/dash_title"
+                android:textStyle="bold"
+                android:textSize="24sp" />
 
-        <Button
-            android:id="@+id/openOnboardingButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/onboarding_guide" />
+            <Button
+                android:id="@+id/settingsButton"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/open_settings" />
+        </LinearLayout>
 
-        <!-- 1. 모델 -->
+        <!-- 채널 요약 -->
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/channelSummary"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/title_model"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:layout_marginTop="2dp"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorSecondary" />
 
+        <!-- 후보 (확인 필요) -->
         <TextView
-            android:id="@+id/modelStatus"
+            android:id="@+id/candidatesHeader"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/model_missing" />
-
-        <Button
-            android:id="@+id/loadModelButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/import_model" />
-
-        <Button
-            android:id="@+id/reimportButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:visibility="gone"
-            android:text="@string/reimport_model" />
-
-        <!-- 자동 수집 (백그라운드) -->
-        <TextView
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="@string/title_collect"
             android:textStyle="bold"
             android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/collectStatus"
+            android:id="@+id/candidatesEmpty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="" />
+            android:text="@string/dash_no_candidates"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
 
-        <Button
-            android:id="@+id/notifAccessButton"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/candidatesList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="@string/grant_notif_access" />
+            android:nestedScrollingEnabled="false" />
 
-        <Button
-            android:id="@+id/smsPermButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/grant_sms" />
-
-        <!-- 2. 입력 -->
+        <!-- 오늘 등록됨 -->
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/addedHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="@string/title_input"
-            android:textStyle="bold"
-            android:textSize="16sp" />
-
-        <EditText
-            android:id="@+id/channelInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/channel_hint"
-            android:inputType="text" />
-
-        <EditText
-            android:id="@+id/senderInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/sender_hint"
-            android:inputType="text" />
-
-        <EditText
-            android:id="@+id/receivedAtInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/received_at_hint"
-            android:inputType="text" />
-
-        <EditText
-            android:id="@+id/messageInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/message_hint"
-            android:inputType="textMultiLine"
-            android:minLines="3"
-            android:gravity="top" />
-
-        <Button
-            android:id="@+id/extractButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:enabled="false"
-            android:text="@string/extract" />
-
-        <!-- 3. 결과 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/title_result"
             android:textStyle="bold"
             android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/resultText"
+            android:id="@+id/addedEmpty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true"
-            android:text="" />
+            android:text="@string/dash_no_added"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
 
-        <Button
-            android:id="@+id/addCalendarButton"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/addedList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:visibility="gone"
-            android:text="@string/add_calendar" />
+            android:layout_marginTop="4dp"
+            android:nestedScrollingEnabled="false" />
 
+        <Button
+            android:id="@+id/allInboxButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/dash_all_inbox" />
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

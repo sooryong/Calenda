@@ -74,6 +74,49 @@
             android:layout_height="wrap_content"
             android:text="@string/ch_gmail" />
 
+        <TextView
+            android:id="@+id/gmailStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <Button
+            android:id="@+id/gmailButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/gmail_connect" />
+
+        <!-- 백그라운드 수집 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/collector_section"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <Switch
+            android:id="@+id/collectorSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/collector_label" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/collector_desc"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <Button
+            android:id="@+id/batteryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/battery_exempt" />
+
         <!-- 학습 데이터 -->
         <TextView
             android:layout_width="wrap_content"
@@ -104,5 +147,13 @@
             android:layout_marginTop="8dp"
             android:textSize="12sp"
             android:textIsSelectable="true" />
+
+        <Button
+            android:id="@+id/debugButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/debug_open" />
     </LinearLayout>
 </ScrollView>

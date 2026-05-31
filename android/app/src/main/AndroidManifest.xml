@@ -8,6 +8,11 @@
     <!-- 고신뢰도 자동 등록 / 빠른 추가·되돌리기 (CalendarProvider 직접 쓰기) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- 백그라운드 상주 수집 서비스 + 재부팅 복원 + 배터리 최적화 제외 요청 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="true"
@@ -65,9 +70,33 @@
             android:name=".OnboardingActivity"
             android:exported="false" />
 
+        <!-- 디버그/수동 추출 (설정에서 진입) -->
+        <activity
+            android:name=".DebugActivity"
+            android:exported="false" />
+
         <!-- 알림 액션(추가/무시/되돌리기) 처리. 앱 내부 전용. -->
         <receiver
             android:name=".EventActionReceiver"
             android:exported="false" />
+
+        <!-- 백그라운드 상주 수집 서비스 (프로세스 유지 → 추론 중단 방지) -->
+        <service
+            android:name=".CollectorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="On-device LLM schedule extraction from incoming SMS/KakaoTalk messages" />
+        </service>
+
+        <!-- 재부팅 후 수집 서비스 복원 -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
