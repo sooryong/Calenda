@@ -36,10 +36,12 @@ calendar-agent/
 ├── models/       # lora 어댑터, merged FP16, gguf 양자화 결과
 ├── configs/      # train.yaml, lora.yaml, model_*.yaml
 ├── ui/           # Streamlit 데이터 검수·에러 분석 UI
-├── notebooks/    # 탐색용 ipynb
+├── notebooks/    # calendar_kaggle.ipynb (bf16, 권장) / colab_train.ipynb (fp16 대안)
 ├── logs/         # 학습 로그
-└── android/      # 안드로이드 앱 코드 (추후)
+└── android/      # 온디바이스 앱 (SMS/카톡 수집 + GGUF 추론 + DateResolver)
 ```
+
+> **상태(2026-05-31)**: r11 모델 = golden 0.905 / time_match 0.788. `Q4_K_M.gguf`(380MB) 양자화 완료, 폰 배포 단계.
 
 ## 빠른 시작
 
@@ -55,15 +57,17 @@ pip install -e .
 cp .env.example .env
 # .env에 ANTHROPIC_API_KEY 입력
 
-# 4. 데이터 생성 → 평가 → 학습 → 양자화
+# 4. 데이터 생성 → 평가 → 학습 → 양자화 (rN = 라운드. 학습은 Kaggle T4x2 권장)
 python scripts/plan.py        --out data/raw/plan_v1.json
 python scripts/generate.py    --plan data/raw/plan_v1.json --out data/raw/v1.jsonl
 python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.jsonl
 python scripts/train_lora.py  --config configs/train.yaml
-python scripts/merge_lora.py  --lora models/lora/r3-qwen --out models/merged/r3-qwen
-python scripts/eval_model.py  --model models/merged/r3-qwen --eval data/eval/golden.jsonl
-bash   scripts/quantize.sh    models/merged/r3-qwen models/gguf/r3-qwen
+python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r11-qwen --out models/merged/r11-qwen
+python scripts/eval_model.py  --model models/merged/r11-qwen --eval data/eval/golden.jsonl
+bash   scripts/quantize.sh    models/merged/r11-qwen models/gguf/r11-qwen
 ```
+
+> **출력 스키마는 extract-resolve다.** 모델은 날짜·시각을 계산하지 않고 표면형(`date` 토큰 + `time`)만 추출하고, 절대 시각 계산은 resolver(`scripts/_common.py` ↔ 앱 `DateResolver.kt`)가 한다. 상세는 `prompts/schema.md`.
 
 ## 베이스 모델
 

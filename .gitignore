@@ -24,6 +24,7 @@ env/
 models/lora/*
 models/merged/*
 models/gguf/*
+models/output/
 !models/lora/.gitkeep
 !models/merged/.gitkeep
 !models/gguf/.gitkeep

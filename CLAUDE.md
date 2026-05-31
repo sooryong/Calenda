@@ -86,26 +86,34 @@ calendar-agent/
 │   └── gguf/             ← Q4_K_M 등
 │
 ├── ui/streamlit_app.py   ← 데이터 검수 + 에러 분석 (Streamlit)
-├── notebooks/, logs/, android/   (안드로이드 앱은 추후)
+├── notebooks/            ← calendar_kaggle.ipynb(bf16, 권장) / colab_train.ipynb(fp16 대안)
+├── logs/                 ← 학습/평가 로그
+└── android/              ← 온디바이스 앱 (SMS/카톡 수집 + GGUF 추론 + DateResolver)
 ```
 
 ---
 
-## 4. 출력 JSON 스키마 (절대 중요)
+## 4. 출력 JSON 스키마 (절대 중요) — extract-resolve
 
-전체 시스템이 이 스키마를 공유한다. `prompts/schema.md`에 상세. 요약:
+전체 시스템이 이 스키마를 공유한다. **상세·토큰 어휘·resolver 표는 반드시 `prompts/schema.md`를 읽어라.** 여기는 요약만.
+
+★ **핵심 설계: 모델은 날짜·시각을 "계산"하지 않고 표면형만 "추출"한다.** 0.5B는 요일→날짜(주말 횡단)·AM/PM→24h 산술을 못 맞히므로, 모델은 `date`(상대 토큰) + `time`(시·분·표시어)만 내고, **절대 시각 계산은 resolver가 결정론적으로 수행**한다:
+- Python: `scripts/_common.py` → `resolve_when` / `resolve_event` / `compose_title`
+- Kotlin(앱): `android/.../DateResolver.kt` (위 Python의 미러 — 둘이 같은 표를 공유)
 
 ```json
 {
   "has_schedule": true,
   "events": [
     {
-      "title": "팀 주간 회의",
-      "start": "2026-05-26T15:00:00+09:00",
-      "end":   "2026-05-26T16:00:00+09:00",
+      "title": "주간 회의",
+      "date": "내일",
+      "time": { "hour": 3, "minute": 0, "marker": null },
+      "end_time": null,
       "all_day": false,
-      "location": "회사 3층 회의실",
-      "attendees": ["김부장"],
+      "location": "회사 3층",
+      "attendees": ["박과장"],
+      "organizer": null,
       "description": null,
       "recurrence": null,
       "confidence": 0.95
@@ -114,19 +122,22 @@ calendar-agent/
 }
 ```
 
-### 입력 포맷 (학습/추론)
-모델은 다음 user 메시지를 받는다:
+- `date`: 상대 토큰(`내일`,`다음주화`,`1주후`,`이번주말`…) 또는 명시된 절대일자(`"2026-06-05"`) 또는 null. **모델은 절대일자 계산 금지.**
+- `time`: `{hour, minute, marker}` (marker=`오전`/`오후`/`저녁`/`정오`… 또는 null). 24h 변환은 resolver가.
+- `title`: 활동/주제만(예: `저녁식사`). "누구와"·발신자 소속은 `compose_title`이 조합 → `민지와 저녁식사`, `주간 회의 · 박과장`.
+
+### 입력 포맷 (학습/추론) — `_common.build_user_block`이 렌더
 ```
 <채널: KakaoTalk>
-<수신시각: 2026-05-25T14:30:00+09:00>
+<수신시각: 2026-05-25T14:30:00+09:00 (월)>      ← 요일 부착
 <발신자: 김부장>
 <메시지>
-내일 3시에 회사 3층에서 주간회의 잡았습니다.
+내일 3시에 회사 3층에서 주간회의 잡았습니다. 박과장도.
 </메시지>
 ```
-→ 모델은 위 스키마 JSON만 출력 (코드펜스 없는 순수 JSON).
+→ 모델은 위 스키마 JSON만 출력 (코드펜스 없는 순수 JSON). 위 예 기대 출력: `"date":"내일", "time":{"hour":3,"minute":0,"marker":null}` → resolver가 받은 14:30 기준 "3시"→15:00, 2026-05-26으로 변환.
 
-**수신시각이 입력에 포함된다.** 상대 시간("내일")을 이 기준으로 절대 시각으로 변환해야 한다. 시간대 명시 안 되면 +09:00.
+**멀티턴(대화내역)**: 일정 협의가 여러 메시지에 걸치면 앱이 직전 3~5개를 `<대화내역>` 블록으로 함께 넣는다. 최종 메시지가 확정 응답("좋습니다")이면 직전 제안 시각을 추출(`has_schedule=true`), 새 제안·유보면 false. 형식은 `build_user_block`이 학습·평가·앱 공용으로 렌더 — 바꾸면 세 곳을 함께 바꿔야 한다. 상세는 `prompts/schema.md`.
 
 ---
 
@@ -138,7 +149,7 @@ calendar-agent/
 
 ### 데이터 형식
 - 모든 데이터는 **JSONL** (한 줄에 dict 하나, `orjson` 사용).
-- 페어 필드: `scenario_id`, `received_at`, `channel`, `sender`, `language`, `message`, `gold`.
+- 페어 필드: `scenario_id`, `received_at`, `channel`, `sender`, `language`, `message`, `gold`. 멀티턴 케이스만 `thread_context`(직전 메시지 배열) 추가.
 - QA 통과 페어는 `_qa` 필드 추가, 평가 실패 케이스는 `_pred` / `_scores` / `_reason` 추가.
 
 ### 모델 호출
@@ -194,11 +205,11 @@ python scripts/plan.py        --out data/raw/plan_v1.json
 python scripts/generate.py    --plan data/raw/plan_v1.json --out data/raw/v1.jsonl --workers 4
 python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.jsonl
 
-# 학습 → merge → 평가 → 양자화
+# 학습 → merge → 평가 → 양자화 (rN = 라운드. 학습은 Kaggle T4x2 DDP, 나머지는 로컬)
 python scripts/train_lora.py  --config configs/train.yaml
-python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r3-qwen --out models/merged/r3-qwen
-python scripts/eval_model.py  --model models/merged/r3-qwen --eval data/eval/golden.jsonl --out logs/eval_r3-qwen.json
-bash   scripts/quantize.sh    models/merged/r3-qwen models/gguf/r3-qwen
+python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r11-qwen --out models/merged/r11-qwen
+python scripts/eval_model.py  --model models/merged/r11-qwen --eval data/eval/golden.jsonl --out logs/eval_r11-qwen.json
+bash   scripts/quantize.sh    models/merged/r11-qwen models/gguf/r11-qwen
 
 # 폐루프: 실패셋으로 다음 라운드 시나리오 생성
 python scripts/plan.py --failures data/failures/round_latest.jsonl --out data/raw/plan_v2.json
@@ -219,13 +230,15 @@ streamlit run ui/streamlit_app.py
 
 ## 10. 현재 개발 단계
 
-상세는 `HANDOFF.md` 참조. 요약:
-- ✅ 스켈레톤(폴더/스크립트/프롬프트/configs) 완성
-- ✅ `.env`에 API 키 입력됨
-- 🔧 Windows venv 구축 중 (Python 3.14 사용, pyproject.toml 버전 제약 완화함)
-- ⏳ Planner 첫 실행
-- ⏳ Generator로 5K 페어 생성
-- ⏳ 골든 평가셋 50~100건 **수동 작성** (가장 중요한 다음 작업)
+상세·다음 할 일은 `HANDOFF.md` 참조. 요약 (2026-05-31):
+- ✅ 데이터 파이프라인 + 골든셋(51건) 완성. `train.jsonl` 2245건(base 1775 + weekend 250 + cowork 100 + thread 120) git 추적.
+- ✅ **extract-resolve 스키마 마이그레이션 완료** (모델=추출, resolver=계산). `_common`/`DateResolver` 양쪽 구현.
+- ✅ **멀티턴(대화내역) 학습/평가/앱 배선** — `build_user_block` 공용.
+- ✅ 최적 레시피 확정: **bf16 + base 2245**(discipline 보강 빼기). Kaggle T4x2 DDP로 ~56분. → **r11 = golden 0.905 / time_match 0.788** (배포본).
+- ✅ r11 merge → quantize(`calendar.Q4_K_M.gguf`, 380MB) 완료.
+- ✅ Android 앱: SMS/카톡 자동 수집 + 새 스키마/DateResolver 빌드.
+- ⏳ **폰 배포** — Q4_K_M gguf 폰 임포트 + Android Studio 재빌드 + 온디바이스 검증(토 "내일"→일).
+- ⏳ 다음 라운드: location 오추출(사람 이름이 장소로) 등 소량·다양 음성으로 보강.
 
 ---
 
