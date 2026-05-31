@@ -64,4 +64,20 @@
     <string name="save">저장</string>
     <string name="save_and_add">저장 후 캘린더에 추가</string>
     <string name="saved">저장됨</string>
+
+    <!-- 설정 화면 (Phase C-3) -->
+    <string name="settings_title">설정</string>
+    <string name="open_settings">설정</string>
+    <string name="auto_add_label">고신뢰도 일정 자동 등록</string>
+    <string name="auto_add_desc">신뢰도가 임계값 이상이면 확인 없이 캘린더에 등록(되돌리기 가능)</string>
+    <string name="threshold_label">자동 등록 임계값: %1$d%%</string>
+    <string name="channels_label">수집 채널</string>
+    <string name="ch_kakao">카카오톡</string>
+    <string name="ch_sms">문자(SMS)</string>
+    <string name="ch_gmail">Gmail</string>
+    <string name="learning_label">학습 데이터</string>
+    <string name="export_feedback">학습 데이터 내보내기 (JSONL)</string>
+    <string name="export_desc">추가·무시·편집 기록을 학습 페어로 내보냅니다. 기기 안에만 저장되며 자동 업로드는 없습니다.</string>
+    <string name="export_running">내보내는 중…</string>
+    <string name="export_result">%1$d건 내보냄 (스킵 %2$d)\n%3$s</string>
 </resources>

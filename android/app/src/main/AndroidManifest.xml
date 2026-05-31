@@ -55,6 +55,11 @@
             android:name=".EventEditActivity"
             android:exported="false" />
 
+        <!-- 설정 -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
         <!-- 알림 액션(추가/무시/되돌리기) 처리. 앱 내부 전용. -->
         <receiver
             android:name=".EventActionReceiver"

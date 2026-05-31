@@ -17,6 +17,12 @@
             android:layout_height="wrap_content"
             android:text="@string/open_inbox" />
 
+        <Button
+            android:id="@+id/openSettingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/open_settings" />
+
         <!-- 1. 모델 -->
         <TextView
             android:layout_width="wrap_content"

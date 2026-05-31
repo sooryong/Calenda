@@ -53,6 +53,9 @@ class MainActivity : AppCompatActivity() {
         binding.openInboxButton.setOnClickListener {
             startActivity(Intent(this, EventListActivity::class.java))
         }
+        binding.openSettingsButton.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         binding.loadModelButton.setOnClickListener {
             if (modelFile.exists()) loadModel() else pickModelFile()
         }

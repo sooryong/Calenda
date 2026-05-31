@@ -55,8 +55,11 @@ object MessagePipeline {
         }
         // has_schedule=false(아직 협의 중/일정 아님)면 아무것도 안 함
         if (ext.hasSchedule && ext.events.isNotEmpty()) {
-            // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산)
-            val event = DateResolver.resolveEvent(receivedAt, msg.sender, ext.events.first())
+            // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산), 그 뒤 개인 별칭맵으로 location 보정
+            val event = AliasStore.from(appCtx).correctLocation(
+                msg.sender,
+                DateResolver.resolveEvent(receivedAt, msg.sender, ext.events.first()),
+            )
             // 이벤트함에 영속화(상태=대기). 중복(dedupeKey)이면 null → 알림 생략.
             // receivedAt/modelRawJson/threadJson = incremental-learning 페어 재구성용 캡처.
             // 등록 정책(고신뢰도 자동 추가 / 저신뢰도 확인)은 EventRouter가 결정.

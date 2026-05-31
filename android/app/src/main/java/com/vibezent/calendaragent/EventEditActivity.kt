@@ -109,6 +109,12 @@ class EventEditActivity : AppCompatActivity() {
         val ce = CalendarEvent(title, startIso, null, allDay, loc, attendees, desc, cur.recurrence, 1.0)
         val edited = buildEditedJson(cur, title, allDay, loc, attendees, desc)
 
+        // 경로 2: 사용자가 location을 지웠다면(오추출 교정) 그 발신자에 대해 '장소 아님'으로 학습.
+        val oldLoc = cur.location
+        if (loc == null && !oldLoc.isNullOrBlank()) {
+            AliasStore.from(this).markNotPlace(cur.sender, oldLoc)
+        }
+
         lifecycleScope.launch {
             val calId = withContext(Dispatchers.IO) {
                 if (CalendarWriter.hasPermission(this@EventEditActivity)) CalendarWriter.insert(this@EventEditActivity, ce) else null
