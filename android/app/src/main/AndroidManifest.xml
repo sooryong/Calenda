@@ -60,6 +60,11 @@
             android:name=".SettingsActivity"
             android:exported="false" />
 
+        <!-- 첫 실행 설정 가이드 -->
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false" />
+
         <!-- 알림 액션(추가/무시/되돌리기) 처리. 앱 내부 전용. -->
         <receiver
             android:name=".EventActionReceiver"

@@ -5,6 +5,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 /**
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
  *
  * 추론은 단일 스레드로 직렬화한다(온디바이스 LLM은 동시에 하나만; LlamaBridge도 @Synchronized).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 object MessagePipeline {
     private const val TAG = "MessagePipeline"
     private const val N_PREDICT = 256

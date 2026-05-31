@@ -16,7 +16,7 @@ object EventRouter {
     ) {
         val settings = SettingsStore.from(appCtx)
         val autoEligible = settings.autoAddEnabled &&
-            event.confidence >= settings.confidenceThreshold &&
+            (event.confidence >= settings.confidenceThreshold) &&
             CalendarWriter.hasPermission(appCtx)
 
         if (autoEligible) {

@@ -80,4 +80,18 @@
     <string name="export_desc">추가·무시·편집 기록을 학습 페어로 내보냅니다. 기기 안에만 저장되며 자동 업로드는 없습니다.</string>
     <string name="export_running">내보내는 중…</string>
     <string name="export_result">%1$d건 내보냄 (스킵 %2$d)\n%3$s</string>
+
+    <!-- 온보딩 (Phase C-4) -->
+    <string name="onboarding_title">처음 설정</string>
+    <string name="onboarding_intro">메시지에서 일정을 자동 추출·등록하려면 아래를 설정하세요. 나중에 \"설정 가이드\"에서 다시 열 수 있습니다.</string>
+    <string name="step_model">온디바이스 모델 (.gguf)</string>
+    <string name="step_notif">알림 표시</string>
+    <string name="step_cal">캘린더 등록</string>
+    <string name="step_sms">문자(SMS) 수집</string>
+    <string name="step_kakao">카카오톡 알림 접근</string>
+    <string name="onboarding_start">시작하기</string>
+    <string name="onboarding_guide">설정 가이드</string>
+    <string name="action_grant">허용</string>
+    <string name="action_import">임포트</string>
+    <string name="step_done">✓</string>
 </resources>

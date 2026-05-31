@@ -56,6 +56,14 @@ class MainActivity : AppCompatActivity() {
         binding.openSettingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        binding.openOnboardingButton.setOnClickListener {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+        }
+
+        // 첫 실행이면 설정 가이드로 안내
+        if (!SettingsStore.from(this).onboardingDone) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+        }
         binding.loadModelButton.setOnClickListener {
             if (modelFile.exists()) loadModel() else pickModelFile()
         }

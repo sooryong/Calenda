@@ -30,12 +30,18 @@ class SettingsStore(ctx: Context) {
         get() = prefs.getBoolean(K_COLLECTOR, false)
         set(v) = prefs.edit().putBoolean(K_COLLECTOR, v).apply()
 
+    /** 첫 실행 온보딩 완료 여부. */
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean(K_ONBOARDING, false)
+        set(v) = prefs.edit().putBoolean(K_ONBOARDING, v).apply()
+
     private fun keyChannel(channel: String) = "channel_$channel"
 
     companion object {
         private const val K_AUTO_ADD = "auto_add"
         private const val K_THRESHOLD = "confidence_threshold"
         private const val K_COLLECTOR = "collector_enabled"
+        private const val K_ONBOARDING = "onboarding_done"
         fun from(ctx: Context) = SettingsStore(ctx)
     }
 }
