@@ -13,7 +13,8 @@
         <!-- 상단바: 로고+제목(가운데) + 설정(우) -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
