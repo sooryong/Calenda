@@ -19,6 +19,10 @@ env/
 .env.local
 *.key
 *.pem
+# Google OAuth 클라이언트 JSON (앱은 미사용 — 패키지+SHA-1로 매칭). 커밋 방지.
+**/client_secret_*.json
+**/*.apps.googleusercontent.com.json
+google-services.json
 
 # --- 모델 / 데이터 (대용량) ---
 models/lora/*
