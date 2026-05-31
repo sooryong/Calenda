@@ -126,6 +126,12 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val res = withContext(Dispatchers.IO) { FeedbackExporter.export(this@SettingsActivity) }
             binding.exportResult.text = getString(R.string.export_result, res.pairs, res.skipped, res.file.absolutePath)
+            // 결과가 화면 하단이라 스크롤이 필요 → Toast로 즉시 확인 가능하게.
+            Toast.makeText(
+                this@SettingsActivity,
+                getString(R.string.export_result, res.pairs, res.skipped, res.file.name),
+                Toast.LENGTH_LONG,
+            ).show()
             binding.exportButton.isEnabled = true
         }
     }

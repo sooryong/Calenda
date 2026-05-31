@@ -19,7 +19,7 @@
             android:layout_marginBottom="12dp" />
 
         <!-- 자동 등록 -->
-        <Switch
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/autoAddSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,19 +56,19 @@
             android:textStyle="bold"
             android:textSize="16sp" />
 
-        <Switch
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/chKakao"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/ch_kakao" />
 
-        <Switch
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/chSms"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/ch_sms" />
 
-        <Switch
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/chGmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -97,7 +97,7 @@
             android:textStyle="bold"
             android:textSize="16sp" />
 
-        <Switch
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/collectorSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
