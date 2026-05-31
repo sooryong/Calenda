@@ -39,6 +39,7 @@ data class DetectedEvent(
     val dedupeKey: String,     // 중복 억제 키 (channel|start|title 정규화)
     val createdAt: Long,
     val calendarEventId: Long? = null,  // 자동/수동 등록 시 CalendarProvider event _id
+    val registeredAt: Long? = null,     // 캘린더 등록된 시각(ms). 대시보드 '오늘 등록' 필터용
 
     // ── incremental learning 캡처 (학습 페어 재구성용) ──────────────────
     val receivedAt: String = "",       // 원본 메시지 수신시각 ISO (학습 입력의 <수신시각>)

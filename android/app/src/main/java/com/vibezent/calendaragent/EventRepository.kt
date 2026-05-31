@@ -14,6 +14,11 @@ class EventRepository(private val dao: EventDao) {
     fun since(ms: Long): Flow<List<DetectedEvent>> = dao.observeSince(ms)
     fun pendingCount(): Flow<Int> = dao.countByStatus(EventStatus.PENDING)
 
+    /** 대시보드: 예비(오늘 이후 미등록) / 오늘 등록된 건. */
+    fun activeCandidates(today: String): Flow<List<DetectedEvent>> = dao.observeActiveCandidates(today)
+    fun registeredSince(sinceMs: Long): Flow<List<DetectedEvent>> = dao.observeRegisteredSince(sinceMs)
+    suspend fun purgePastPending(today: String) = dao.purgePastPending(today)
+
     /**
      * 해석된 이벤트를 저장. 중복(dedupeKey)이면 null, 새로 저장되면 row id.
      * receivedAt/modelRawJson/threadJson은 incremental-learning 페어 재구성용 캡처(선택).
@@ -37,7 +42,12 @@ class EventRepository(private val dao: EventDao) {
 
     suspend fun get(id: Long): DetectedEvent? = dao.getById(id)
     suspend fun update(ev: DetectedEvent) = dao.update(ev)
-    suspend fun setStatus(id: Long, s: EventStatus, calId: Long? = null) = dao.setStatus(id, s, calId)
+
+    /** 상태 변경. 등록(ADDED/AUTO_ADDED)으로 바뀌면 registeredAt=now, 그 외엔 null로 클리어. */
+    suspend fun setStatus(id: Long, s: EventStatus, calId: Long? = null) {
+        val regAt = if (s == EventStatus.ADDED || s == EventStatus.AUTO_ADDED) System.currentTimeMillis() else null
+        dao.setStatus(id, s, calId, regAt)
+    }
     suspend fun delete(ev: DetectedEvent) = dao.delete(ev)
     suspend fun clearDismissed() = dao.clearByStatus(EventStatus.DISMISSED)
     suspend fun trainingCandidates(): List<DetectedEvent> = dao.trainingCandidates()

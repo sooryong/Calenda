@@ -3,6 +3,7 @@ package com.vibezent.calendaragent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -41,6 +42,16 @@ class EventAdapter(
             EventStatus.AUTO_ADDED -> ctx.getString(R.string.status_auto)
             EventStatus.DISMISSED -> ctx.getString(R.string.status_dismissed)
         }
+        b.statusBadge.setTextColor(
+            ContextCompat.getColor(
+                ctx,
+                when (e.status) {
+                    EventStatus.ADDED, EventStatus.AUTO_ADDED -> R.color.purple_500  // 등록=테마 보라
+                    EventStatus.PENDING -> R.color.amber_600                          // 예비=앰버
+                    EventStatus.DISMISSED -> R.color.chip_zero
+                },
+            ),
+        )
         b.eventTitle.text = e.title
         b.eventTime.text = prettyTime(e.start, e.allDay)
 

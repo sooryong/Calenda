@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 채널 등록현황 칩 배경. 색은 코드에서 backgroundTint로(등록>0 보라 / 0 흐림). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="20dp" />
+    <solid android:color="@android:color/white" />
+</shape>

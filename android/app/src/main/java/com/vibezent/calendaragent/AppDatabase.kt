@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 /** 앱 단일 Room DB. 이벤트함 테이블 1개. */
-@Database(entities = [DetectedEvent::class], version = 1, exportSchema = false)
+@Database(entities = [DetectedEvent::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 

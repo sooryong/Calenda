@@ -35,8 +35,26 @@ interface EventDao {
     @Update
     suspend fun update(event: DetectedEvent)
 
-    @Query("UPDATE detected_events SET status = :status, calendarEventId = :calId WHERE id = :id")
-    suspend fun setStatus(id: Long, status: EventStatus, calId: Long?)
+    @Query("UPDATE detected_events SET status = :status, calendarEventId = :calId, registeredAt = :registeredAt WHERE id = :id")
+    suspend fun setStatus(id: Long, status: EventStatus, calId: Long?, registeredAt: Long?)
+
+    /** 대시보드 '예비': 미등록(PENDING) + 일정이 오늘 이후(또는 날짜 미상). start ISO의 날짜부 비교. */
+    @Query(
+        "SELECT * FROM detected_events WHERE status = 'PENDING' " +
+            "AND (start IS NULL OR substr(start, 1, 10) >= :today) ORDER BY start ASC",
+    )
+    fun observeActiveCandidates(today: String): Flow<List<DetectedEvent>>
+
+    /** 대시보드 '등록': 오늘 등록된(registeredAt >= 오늘 0시) 것만. */
+    @Query(
+        "SELECT * FROM detected_events WHERE status IN ('ADDED', 'AUTO_ADDED') " +
+            "AND registeredAt >= :sinceMs ORDER BY start ASC",
+    )
+    fun observeRegisteredSince(sinceMs: Long): Flow<List<DetectedEvent>>
+
+    /** 예비 자동 정리: 일정 날짜가 오늘보다 지난 미등록 건 삭제. */
+    @Query("DELETE FROM detected_events WHERE status = 'PENDING' AND start IS NOT NULL AND substr(start, 1, 10) < :today")
+    suspend fun purgePastPending(today: String)
 
     @Delete
     suspend fun delete(event: DetectedEvent)

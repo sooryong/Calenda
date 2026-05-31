@@ -37,12 +37,12 @@
     <string name="off">꺼짐</string>
 
     <!-- 메인 대시보드 -->
-    <string name="dash_title">오늘의 일정</string>
-    <string name="dash_channel_summary">카톡 %1$d · 문자 %2$d · Gmail %3$d</string>
-    <string name="dash_candidates">후보 · 확인 필요 (%1$d)</string>
-    <string name="dash_added">오늘 등록됨 (%1$d)</string>
-    <string name="dash_no_candidates">확인할 후보가 없습니다.</string>
-    <string name="dash_no_added">오늘 등록된 일정이 없습니다.</string>
+    <string name="dash_title">오늘 받은 일정</string>
+    <string name="dash_chip">%1$s %2$d</string>
+    <string name="dash_ch_kakao">카톡</string>
+    <string name="dash_ch_sms">문자</string>
+    <string name="dash_ch_gmail">Gmail</string>
+    <string name="dash_empty">표시할 일정이 없습니다.</string>
     <string name="dash_all_inbox">전체 이벤트함 보기 →</string>
     <string name="debug_open">디버그: 수동 추출 테스트</string>
 
@@ -50,14 +50,14 @@
     <string name="title_inbox">이벤트함</string>
     <string name="open_inbox">이벤트함 열기</string>
     <string name="inbox_empty">감지된 일정이 없습니다.\n메시지가 오면 여기에 모입니다.</string>
-    <string name="status_pending">대기</string>
-    <string name="status_added">추가됨</string>
-    <string name="status_auto">자동등록</string>
+    <string name="status_pending">예비</string>
+    <string name="status_added">등록</string>
+    <string name="status_auto">등록</string>
     <string name="status_dismissed">무시됨</string>
-    <string name="act_add">캘린더에 추가</string>
-    <string name="act_readd">다시 추가</string>
+    <string name="act_add">등록</string>
+    <string name="act_readd">다시 등록</string>
     <string name="act_dismiss">무시</string>
-    <string name="act_undo">되돌리기</string>
+    <string name="act_undo">취소</string>
     <string name="act_edit">편집</string>
     <string name="inbox_no_calendar">캘린더 앱에서 저장을 완료하세요</string>
     <string name="calendar_add_failed">캘린더 추가 실패</string>

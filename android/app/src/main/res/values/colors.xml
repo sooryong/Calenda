@@ -3,4 +3,6 @@
     <color name="purple_500">#FF6750A4</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="amber_600">#FFD08700</color>        <!-- 예비 배지 -->
+    <color name="chip_zero">#4A4458</color>          <!-- 등록 0건 채널 칩(흐리게) -->
 </resources>

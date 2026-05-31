@@ -124,6 +124,7 @@ class EventEditActivity : AppCompatActivity() {
                 location = loc, attendees = attendees, description = desc, editedJson = edited,
                 status = if (calId != null) EventStatus.ADDED else cur.status,
                 calendarEventId = calId ?: cur.calendarEventId,
+                registeredAt = if (calId != null) System.currentTimeMillis() else cur.registeredAt,
             )
             withContext(Dispatchers.IO) { repo.update(row) }
             if (calId == null) {

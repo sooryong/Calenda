@@ -33,65 +33,65 @@
                 android:text="@string/open_settings" />
         </LinearLayout>
 
-        <!-- 채널 요약 -->
-        <TextView
-            android:id="@+id/channelSummary"
+        <!-- 채널별 등록 현황 칩 (테마색) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textSize="14sp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
 
-        <!-- 후보 (확인 필요) -->
-        <TextView
-            android:id="@+id/candidatesHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            <TextView
+                android:id="@+id/chipKakao"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/chipSms"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/chipGmail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- 통합 목록 (예비 + 오늘 등록) -->
         <TextView
-            android:id="@+id/candidatesEmpty"
+            android:id="@+id/emptyView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/dash_no_candidates"
-            android:textSize="13sp"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:text="@string/dash_empty"
             android:textColor="?android:attr/textColorSecondary"
             android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/candidatesList"
+            android:id="@+id/eventList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:nestedScrollingEnabled="false" />
-
-        <!-- 오늘 등록됨 -->
-        <TextView
-            android:id="@+id/addedHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:textStyle="bold"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/addedEmpty"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/dash_no_added"
-            android:textSize="13sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:visibility="gone" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/addedList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="12dp"
             android:nestedScrollingEnabled="false" />
 
         <Button
@@ -99,7 +99,7 @@
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:text="@string/dash_all_inbox" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
