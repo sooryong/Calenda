@@ -75,18 +75,12 @@
             android:text="@string/ch_gmail" />
 
         <TextView
-            android:id="@+id/gmailStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="13sp"
+            android:layout_marginTop="2dp"
+            android:text="@string/gmail_via_notif"
+            android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
-
-        <Button
-            android:id="@+id/gmailButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/gmail_connect" />
 
         <!-- 백그라운드 수집 -->
         <TextView

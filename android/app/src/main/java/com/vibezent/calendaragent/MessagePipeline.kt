@@ -41,7 +41,8 @@ object MessagePipeline {
             return
         }
         val receivedAt = ScheduleExtractor.isoOf(msg.timeMillis)
-        val thread = ConversationBuffer.contextBefore(msg.conversationKey)
+        // Gmail은 대화 묶음(멀티턴) 불필요 — 각 알림을 단일 메시지로. 카톡/문자만 <대화내역> 사용.
+        val thread = if (msg.channel == "gmail") emptyList() else ConversationBuffer.contextBefore(msg.conversationKey)
         val prompt = ScheduleExtractor.buildPrompt(
             channel = msg.channel,
             receivedAt = receivedAt,
