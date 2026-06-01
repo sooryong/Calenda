@@ -28,7 +28,9 @@ SOURCES = [
     {"path": "data/processed/cowork_boost.jsonl",     "kind": "keep", "real": False},  # 엣지: 협업
     {"path": "data/processed/gmail_real_train.jsonl", "kind": "keep", "real": True},   # 실데이터: Gmail
     {"path": "data/processed/sms_real.jsonl",         "kind": "keep", "real": True},   # 실데이터: SMS(adb)
-    # 다음 라운드: kakao_real / feedback_export 를 여기에 'keep'으로 추가
+    {"path": "data/processed/kakao_real.jsonl",       "kind": "keep", "real": True},   # 실데이터: 카톡(캡처)
+    # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
+
 ]
 
 
