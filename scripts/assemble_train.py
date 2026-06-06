@@ -32,6 +32,7 @@ SOURCES = [
     {"path": "data/processed/ad_negative.jsonl",      "kind": "keep", "real": False},  # 하드네거티브: 광고/프로모션/알림톡(브랜드 발신, 날짜 박힘)
     {"path": "data/processed/r14_hardcases.jsonl",     "kind": "keep", "real": False},  # r14: gmail음성·광고보강·제3자·마감=종일(r13 실패분석)
     {"path": "data/processed/r15_hardcases.jsonl",     "kind": "keep", "real": False},  # r15: gmail업무음성·광고·제3자·재난경보·마감종일·환각억제·terse·멀티턴(r14 실패분석)
+    {"path": "data/processed/r16_hardcases.jsonl",     "kind": "keep", "real": False},  # r16: precision 밀착음성 + time/date(N일·요일·date-only·경쟁날짜·멀티턴) (r15 디커플링 분석)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
 
 ]
