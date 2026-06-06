@@ -150,25 +150,59 @@ def main():
     event_count_acc = 0
     failures = []
 
+    # 디커플링 집계: 검출(recall/specificity)과 추출품질(진짜양성 한정)을 분리해
+    # 결합 지표(과발화 1건이 title/time/loc을 동시에 0으로 박는 문제)를 보완.
+    pos_total = neg_total = 0
+    recall_hit = spec_hit = overfire = missed = 0
+    tp_n = 0
+    tp_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
+
     for sample in tqdm(samples, desc="eval"):
         raw = infer(model, tok, args.system_prompt, sample)
         pred = safe_json_loads(raw)
 
         gold = sample["gold"]
+        g_has = bool(gold.get("has_schedule"))
+        if g_has:
+            pos_total += 1
+        else:
+            neg_total += 1
+
         if pred is None:
+            # 파싱 실패 = 유효 예측 없음 → 검출 크레딧 없음(양성이면 missed)
+            if g_has:
+                missed += 1
             failures.append({**sample, "_pred_raw": raw, "_reason": "json_parse_error"})
             continue
 
         json_valid += 1
 
-        if pred.get("has_schedule") == gold.get("has_schedule"):
+        p_has = bool(pred.get("has_schedule"))
+        if p_has == g_has:
             has_sched_correct += 1
+        # 검출 분해
+        if g_has and p_has:
+            recall_hit += 1
+        elif (not g_has) and (not p_has):
+            spec_hit += 1
+        elif (not g_has) and p_has:
+            overfire += 1
+        elif g_has and (not p_has):
+            missed += 1
 
-        scores = score_events(sample["received_at"], gold.get("events", []), pred.get("events", []))
+        gold_events = gold.get("events", [])
+        pred_events = pred.get("events", [])
+        scores = score_events(sample["received_at"], gold_events, pred_events)
         if scores["event_count_match"]:
             event_count_acc += 1
         for k in field_sum:
             field_sum[k] += scores[k]
+
+        # 추출품질: 올바로 검출된 진짜 양성 & 개수 일치 & gold 이벤트 존재할 때만
+        if g_has and p_has and len(gold_events) == len(pred_events) and gold_events:
+            tp_n += 1
+            for k in tp_sum:
+                tp_sum[k] += scores[k]
 
         # 실패 임계
         if scores["title_f1"] < 0.7 or scores["time_f1"] < 1.0:
@@ -192,6 +226,22 @@ def main():
         )
         + 0.10 * metrics["event_count_acc"]
     )
+
+    # ── 디커플링 지표 (결합 지표의 과소평가 보정 — 라운드별 정직한 추적용) ──
+    metrics["detection"] = {
+        "n_pos": pos_total,
+        "n_neg": neg_total,
+        "recall_pos": recall_hit / max(1, pos_total),       # 진짜 일정을 잡는 비율
+        "specificity_neg": spec_hit / max(1, neg_total),    # 일정 아닌 걸 거르는 비율(과발화의 역)
+        "overfire_count": overfire,                          # 음성→양성 오발화
+        "missed_count": missed,                              # 양성→음성 누락
+    }
+    metrics["extraction_on_true_positives"] = {              # 올바로 검출된 양성에 한한 추출 품질
+        "n": tp_n,
+        "title_avg": tp_sum["title_f1"] / max(1, tp_n),
+        "time_acc": tp_sum["time_f1"] / max(1, tp_n),
+        "loc_avg": tp_sum["loc_f1"] / max(1, tp_n),
+    }
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
