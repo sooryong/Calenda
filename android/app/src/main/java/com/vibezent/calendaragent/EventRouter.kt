@@ -8,18 +8,17 @@ import android.util.Log
  *   - 자동등록 ON & confidence ≥ 임계값 & 캘린더 권한 있음 & (엄격모드면 What+When+Where 충족) → 바로 등록(AUTO_ADDED) + '되돌리기' 알림
  *   - 그 외 → 확인 알림(추가/무시 액션)으로 사용자에게 위임 (상태 PENDING 유지). 놓침 없음, 한 번 탭하면 등록.
  *
- * 엄격 등록(strictRegister): 일정은 '누가(Who)·언제(When)·무엇을(What)·어디서(Where)'.
- * What·When·Where가 모두 명확할 때만 자동 등록하고, 하나라도 없으면 예비로 보류해 오탐을 줄인다.
- * Who(누가)는 메시지 발신자가 항상 1명 존재하므로 충족된 것으로 보고 별도 검사하지 않는다.
+ * 엄격 등록(strictRegister): 제목(What)과 일시(When)가 모두 명확할 때만 자동 등록하고,
+ * 하나라도 없으면 예비로 보류해 오탐을 줄인다. 장소(Where)는 개인 일정엔 없는 경우가 많아
+ * 자동 등록을 막지 않는다(없어도 등록). Who(누가)는 발신자가 항상 있으므로 검사하지 않는다.
  */
 object EventRouter {
     private const val TAG = "EventRouter"
 
-    /** 등록 기준 충족? What=제목, When=일시(start), Where=장소. Who는 발신자로 항상 충족. */
+    /** 등록 기준 충족? What=제목, When=일시(start). 장소는 요구하지 않음(없어도 등록). */
     private fun meetsStrictCriteria(e: CalendarEvent): Boolean =
         e.title.isNotBlank() &&
-            !e.start.isNullOrBlank() &&
-            !e.location.isNullOrBlank()
+            !e.start.isNullOrBlank()
 
     suspend fun route(
         appCtx: Context, repo: EventRepository, id: Long, event: CalendarEvent, msg: IncomingMessage,
