@@ -41,8 +41,13 @@ object CalendarWriter {
                 put(CalendarContract.Events.RRULE, rrule)
                 put(CalendarContract.Events.DURATION, "PT1H")
             } else if (event.allDay) {
+                // 종일: CalendarProvider 규약상 DTSTART/DTEND=UTC 자정, EVENT_TIMEZONE=UTC.
+                // (로컬 자정으로 넣으면 Google Calendar가 날짜를 하루 당겨 표시/미표시함.)
+                val dayUtc = parseDateUtc(event.start) ?: startMs
                 put(CalendarContract.Events.ALL_DAY, 1)
-                put(CalendarContract.Events.DTEND, startMs + 24 * 60 * 60 * 1000L)
+                put(CalendarContract.Events.DTSTART, dayUtc)
+                put(CalendarContract.Events.DTEND, dayUtc + 24 * 60 * 60 * 1000L)
+                put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
             } else {
                 put(CalendarContract.Events.DTEND, parseIso(event.end) ?: (startMs + 60 * 60 * 1000L))
             }
@@ -74,8 +79,11 @@ object CalendarWriter {
                 putNull(CalendarContract.Events.DTEND)
                 put(CalendarContract.Events.ALL_DAY, 0)
             } else if (event.allDay) {
+                val dayUtc = parseDateUtc(event.start) ?: startMs
                 put(CalendarContract.Events.ALL_DAY, 1)
-                put(CalendarContract.Events.DTEND, startMs + 24 * 60 * 60 * 1000L)
+                put(CalendarContract.Events.DTSTART, dayUtc)
+                put(CalendarContract.Events.DTEND, dayUtc + 24 * 60 * 60 * 1000L)
+                put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
                 putNull(CalendarContract.Events.RRULE)
                 putNull(CalendarContract.Events.DURATION)
             } else {
@@ -104,16 +112,53 @@ object CalendarWriter {
         }
     }
 
-    /** 쓰기 가능한 기본(또는 첫) 캘린더 id. */
-    private fun primaryCalendarId(ctx: Context): Long? {
-        val proj = arrayOf(CalendarContract.Calendars._ID)
+    // 미설정 시 폴백 선호 계정(설정에서 사용자가 고르면 그게 우선).
+    private const val PREFERRED_ACCOUNT = "sooryong.byun@gmail.com"
+
+    /** 캘린더 한 개의 표시 정보 (설정 피커·선택 로직 공용). */
+    data class CalInfo(val id: Long, val account: String, val display: String, val isGoogleOwner: Boolean)
+
+    /** 쓰기 가능 + 화면 표시 캘린더 전체. */
+    fun writableCalendars(ctx: Context): List<CalInfo> {
+        if (!hasPermission(ctx)) return emptyList()
+        val proj = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.OWNER_ACCOUNT,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+        )
         val sel = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR} " +
             "AND ${CalendarContract.Calendars.VISIBLE} = 1"
-        ctx.contentResolver.query(
-            CalendarContract.Calendars.CONTENT_URI, proj, sel, null,
-            "${CalendarContract.Calendars.IS_PRIMARY} DESC",
-        )?.use { c -> if (c.moveToFirst()) return c.getLong(0) }
-        return null
+        val out = mutableListOf<CalInfo>()
+        ctx.contentResolver.query(CalendarContract.Calendars.CONTENT_URI, proj, sel, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                val acct = c.getString(1) ?: ""
+                val type = c.getString(2)
+                val owner = c.getString(3)
+                val disp = c.getString(4) ?: acct
+                val gOwner = type == "com.google" && !owner.isNullOrBlank() && owner == acct
+                out.add(CalInfo(c.getLong(0), acct, disp, gOwner))
+            }
+        }
+        return out
+    }
+
+    /** 설정 피커용: 본인 소유 Google 캘린더만 (없으면 전체 쓰기가능). */
+    fun selectableCalendars(ctx: Context): List<CalInfo> {
+        val all = writableCalendars(ctx)
+        return all.filter { it.isGoogleOwner }.ifEmpty { all }
+    }
+
+    /** 쓰기 대상: ① 설정에서 고른 캘린더(유효하면) ② 선호 계정 Google 소유 ③ 아무 Google 소유 ④ 첫 쓰기가능. */
+    private fun primaryCalendarId(ctx: Context): Long? {
+        val all = writableCalendars(ctx)
+        if (all.isEmpty()) return null
+        val saved = SettingsStore.from(ctx).targetCalendarId
+        if (saved != -1L && all.any { it.id == saved }) return saved
+        return all.firstOrNull { it.isGoogleOwner && it.account == PREFERRED_ACCOUNT }?.id
+            ?: all.firstOrNull { it.isGoogleOwner }?.id
+            ?: all.first().id
     }
 
     private fun buildDescription(event: CalendarEvent): String? {
@@ -121,6 +166,18 @@ object CalendarWriter {
         event.description?.let { parts.add(it) }
         if (event.attendees.isNotEmpty()) parts.add("참석자: " + event.attendees.joinToString(", "))
         return if (parts.isEmpty()) null else parts.joinToString("\n")
+    }
+
+    /** 'YYYY-MM-DD'(또는 ...T...의 날짜부) → 그 날짜의 UTC 자정 epoch millis. 종일 일정용. */
+    private fun parseDateUtc(iso: String?): Long? {
+        if (iso.isNullOrBlank()) return null
+        return try {
+            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            fmt.timeZone = TimeZone.getTimeZone("UTC")
+            fmt.parse(iso.substringBefore('T'))?.time
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** ISO 8601 → epoch millis. tz 없으면 기기 로컬. (CalendarInserter와 동일 규약) */

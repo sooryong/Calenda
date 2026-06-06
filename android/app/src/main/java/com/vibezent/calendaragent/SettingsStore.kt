@@ -40,6 +40,11 @@ class SettingsStore(ctx: Context) {
         get() = prefs.getBoolean(K_ONBOARDING, false)
         set(v) = prefs.edit().putBoolean(K_ONBOARDING, v).apply()
 
+    /** 자동등록 저장 대상 캘린더 id. -1 = 미설정(CalendarWriter가 자동 선택). */
+    var targetCalendarId: Long
+        get() = prefs.getLong(K_CALENDAR, -1L)
+        set(v) = prefs.edit().putLong(K_CALENDAR, v).apply()
+
     private fun keyChannel(channel: String) = "channel_$channel"
 
     companion object {
@@ -48,6 +53,7 @@ class SettingsStore(ctx: Context) {
         private const val K_STRICT = "strict_register"
         private const val K_COLLECTOR = "collector_enabled"
         private const val K_ONBOARDING = "onboarding_done"
+        private const val K_CALENDAR = "target_calendar_id"
         fun from(ctx: Context) = SettingsStore(ctx)
     }
 }

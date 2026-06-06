@@ -88,10 +88,43 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        // 저장할 캘린더 선택
+        binding.calendarButton.setOnClickListener { pickCalendar() }
+
         // 디버그(수동 추출)
         binding.debugButton.setOnClickListener { startActivity(Intent(this, DebugActivity::class.java)) }
 
         refreshModelInfo()
+        refreshCalendarButton()
+    }
+
+    /** 현재 저장 대상 캘린더를 버튼에 표시(미설정이면 자동선택 미리보기). */
+    private fun refreshCalendarButton() {
+        val cals = CalendarWriter.writableCalendars(this)
+        val cur = cals.firstOrNull { it.id == settings.targetCalendarId }
+            ?: cals.firstOrNull { it.isGoogleOwner }
+        binding.calendarButton.text =
+            if (cur != null) getString(R.string.calendar_current_fmt, "${cur.display} (${cur.account})")
+            else getString(R.string.calendar_select)
+    }
+
+    private fun pickCalendar() {
+        val cals = CalendarWriter.selectableCalendars(this)
+        if (cals.isEmpty()) {
+            Toast.makeText(this, R.string.calendar_none, Toast.LENGTH_LONG).show()
+            return
+        }
+        val labels = cals.map { "${it.display}\n${it.account}" }.toTypedArray()
+        val checked = cals.indexOfFirst { it.id == settings.targetCalendarId }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.calendar_picker_title)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                settings.targetCalendarId = cals[which].id
+                refreshCalendarButton()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     override fun onResume() {

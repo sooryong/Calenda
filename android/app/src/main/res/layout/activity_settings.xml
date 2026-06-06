@@ -96,6 +96,23 @@
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 
+        <!-- 저장할 캘린더 -->
+        <Button
+            android:id="@+id/calendarButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="start|center_vertical"
+            android:text="@string/calendar_select" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/calendar_desc"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
         <!-- 채널 -->
         <View
             android:layout_width="match_parent"
