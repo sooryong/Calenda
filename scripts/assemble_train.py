@@ -33,6 +33,7 @@ SOURCES = [
     {"path": "data/processed/r14_hardcases.jsonl",     "kind": "keep", "real": False},  # r14: gmail음성·광고보강·제3자·마감=종일(r13 실패분석)
     {"path": "data/processed/r15_hardcases.jsonl",     "kind": "keep", "real": False},  # r15: gmail업무음성·광고·제3자·재난경보·마감종일·환각억제·terse·멀티턴(r14 실패분석)
     {"path": "data/processed/r16_hardcases.jsonl",     "kind": "keep", "real": False},  # r16: precision 밀착음성 + time/date(N일·요일·date-only·경쟁날짜·멀티턴) (r15 디커플링 분석)
+    {"path": "data/processed/r17_hardcases.jsonl",     "kind": "keep", "real": False},  # r17: 단독 N일+시간없음 행정양성(온디바이스 누락 공백) + precision 음성
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
 
 ]
