@@ -16,7 +16,8 @@ interface EventDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnore(event: DetectedEvent): Long
 
-    @Query("SELECT * FROM detected_events ORDER BY createdAt DESC")
+    // 이벤트함: 삭제(DISMISSED)된 건 숨김. (DISMISSED는 학습 export용으로 DB엔 남음.)
+    @Query("SELECT * FROM detected_events WHERE status != 'DISMISSED' ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<DetectedEvent>>
 
     @Query("SELECT * FROM detected_events WHERE status = :status ORDER BY createdAt DESC")

@@ -103,7 +103,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onRegister(e: DetectedEvent) = addToCalendar(e)
+    /** 등록 토글: 미등록→캘린더 추가, 등록됨→캘린더에서 빼고 미등록(이벤트함엔 유지). */
+    private fun onRegister(e: DetectedEvent) {
+        val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        if (!registered) { addToCalendar(e); return }
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                e.calendarEventId?.let { CalendarWriter.delete(this@MainActivity, it) }
+                repo.setStatus(e.id, EventStatus.PENDING, null)
+            }
+        }
+    }
 
     private fun onEdit(e: DetectedEvent) {
         startActivity(Intent(this, EventEditActivity::class.java).putExtra(EventEditActivity.EXTRA_ID, e.id))

@@ -12,10 +12,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 이벤트함 목록 어댑터. 버튼은 항상 [삭제][등록] 두 개:
- *   미등록(PENDING/DISMISSED) → [삭제](폐기) [등록](활성)
- *   등록됨(ADDED/AUTO_ADDED)   → [삭제](캘린더에서도 삭제) [등록](회색 비활성=이미 등록)
- * 카드 본문 탭 → 편집 화면(시간·제목·장소 수정 후 등록/삭제).
+ * 메인·이벤트함 카드 공용 어댑터. 버튼 두 개:
+ *   [삭제]            — 이벤트함에서 제거(등록돼 있으면 캘린더 일정도 함께 삭제).
+ *   [등록 ↔ 등록 취소] — 캘린더 등록 토글. 미등록=등록, 등록됨=등록 취소(이벤트함엔 그대로 남음).
+ * 카드 본문 탭 → 편집 화면.
  */
 class EventAdapter(
     private val onDelete: (DetectedEvent) -> Unit,
@@ -54,9 +54,9 @@ class EventAdapter(
         b.btnPrimary.text = ctx.getString(R.string.act_delete)
         b.btnPrimary.setOnClickListener { onDelete(e) }
 
-        // 등록: 미등록이면 활성, 등록됨이면 회색 비활성(이미 등록 표시).
-        b.btnSecondary.text = ctx.getString(R.string.act_add)
-        b.btnSecondary.isEnabled = !registered
+        // 등록 ↔ 등록 취소 토글 (등록됨이면 '등록 취소'). 실제 분기는 핸들러가 상태로 처리.
+        b.btnSecondary.text = ctx.getString(if (registered) R.string.act_unregister else R.string.act_add)
+        b.btnSecondary.isEnabled = true
         b.btnSecondary.setOnClickListener { onRegister(e) }
 
         // 편집: 카드 본문 탭.

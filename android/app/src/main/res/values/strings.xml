@@ -60,6 +60,7 @@
     <string name="status_auto">✓ 등록됨</string>
     <string name="status_dismissed">무시됨</string>
     <string name="act_add">등록</string>
+    <string name="act_unregister">등록 취소</string>
     <string name="act_delete">삭제</string>
     <string name="act_readd">다시 등록</string>
     <string name="act_dismiss">무시</string>

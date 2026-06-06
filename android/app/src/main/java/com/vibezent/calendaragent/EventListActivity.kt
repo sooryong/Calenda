@@ -67,7 +67,17 @@ class EventListActivity : AppCompatActivity() {
         }
     }
 
-    private fun onRegister(e: DetectedEvent) = addToCalendar(e)
+    /** 등록 토글: 미등록→캘린더 추가, 등록됨→캘린더에서 빼고 미등록(이벤트함엔 유지). */
+    private fun onRegister(e: DetectedEvent) {
+        val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        if (!registered) { addToCalendar(e); return }
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                e.calendarEventId?.let { CalendarWriter.delete(this@EventListActivity, it) }
+                repo.setStatus(e.id, EventStatus.PENDING, null)
+            }
+        }
+    }
 
     /** 편집: 편집 화면 열기. */
     private fun onEdit(e: DetectedEvent) {
