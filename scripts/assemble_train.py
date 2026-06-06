@@ -22,7 +22,7 @@ from pathlib import Path
 
 # kind: 'keep'(항상 보존) | 'pool'(캡 맞추려 제거 가능).  real: 실데이터 여부(표시용).
 SOURCES = [
-    {"path": "data/processed/train.jsonl",            "kind": "pool", "real": False},  # 현 2245(합성 base+부스트)
+    {"path": "data/processed/base_r16.jsonl",         "kind": "pool", "real": False},  # 안정 base = r16 train.jsonl(git 72e7b15, 0.827). pool=train.jsonl 자기참조 잠식 회피.
     {"path": "data/processed/weekend_boost.jsonl",    "kind": "keep", "real": False},  # 엣지: 주말 횡단
     {"path": "data/processed/thread_confirm.jsonl",   "kind": "keep", "real": False},  # 엣지: 멀티턴 합의
     {"path": "data/processed/cowork_boost.jsonl",     "kind": "keep", "real": False},  # 엣지: 협업
@@ -33,7 +33,8 @@ SOURCES = [
     {"path": "data/processed/r14_hardcases.jsonl",     "kind": "keep", "real": False},  # r14: gmail음성·광고보강·제3자·마감=종일(r13 실패분석)
     {"path": "data/processed/r15_hardcases.jsonl",     "kind": "keep", "real": False},  # r15: gmail업무음성·광고·제3자·재난경보·마감종일·환각억제·terse·멀티턴(r14 실패분석)
     {"path": "data/processed/r16_hardcases.jsonl",     "kind": "keep", "real": False},  # r16: precision 밀착음성 + time/date(N일·요일·date-only·경쟁날짜·멀티턴) (r15 디커플링 분석)
-    {"path": "data/processed/r17_hardcases.jsonl",     "kind": "keep", "real": False},  # r17: 단독 N일+시간없음 행정양성(온디바이스 누락 공백) + precision 음성
+    # r17_hardcases 제외: 과트리거 음성이 r16 대비 회귀시킴. r18은 r16 + N일 종일 양성만.
+    {"path": "data/processed/r18_hardcases.jsonl",     "kind": "keep", "real": False},  # r18: 단독 N일 종일(time=null) 양성만(회귀 없이 공백만 닫기)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
 
 ]
@@ -81,7 +82,7 @@ def breakdown(rows: list[dict]) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cap", type=int, default=2000)
+    ap.add_argument("--cap", type=int, default=2100)  # r18: base_r16(2000) 전량 보존 + N일 양성 추가(잠식 방지)
     ap.add_argument("--neg", type=float, default=0.40, help="목표 음성 비율")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", default="data/processed/train_assembled.jsonl")
