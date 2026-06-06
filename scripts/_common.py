@@ -86,6 +86,8 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
         return None
     token = str(token).strip()
     token = _DATE_ALIAS.get(token.lower(), token).replace(" ", "")
+    # 요일 별칭: '이번목요일'/'이번주목요일'/'다음금요일' → '이번주목'/'다음주금'
+    token = _re.sub(r"(이번|다음|다다음)주?([월화수목금토일])요일", r"\1주\2", token)
     fixed = {"오늘": 0, "내일": 1, "모레": 2, "글피": 3}
     if token in fixed:
         return received_date + _timedelta(days=fixed[token])
@@ -112,6 +114,15 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
     if token in ("이번주말", "다음주말"):
         sat = received_date + _timedelta(days=(5 - received_date.weekday()) % 7)
         return sat + (_timedelta(days=7) if token == "다음주말" else _timedelta())
+    m = _re.match(r"^(\d{1,2})일$", token)              # 단독 일자 → 가까운 미래 N일
+    if m:
+        n = int(m.group(1))
+        y, mo = received_date.year, received_date.month
+        cand = _date(y, mo, min(n, _calendar.monthrange(y, mo)[1]))
+        if cand < received_date:
+            y2, mo2 = (y + 1, 1) if mo == 12 else (y, mo + 1)
+            cand = _date(y2, mo2, min(n, _calendar.monthrange(y2, mo2)[1]))
+        return cand
     if _re.match(r"^\d{4}-\d{2}-\d{2}$", token):
         try:
             return _date.fromisoformat(token)

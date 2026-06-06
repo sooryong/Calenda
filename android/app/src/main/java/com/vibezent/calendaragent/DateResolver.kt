@@ -36,6 +36,10 @@ object DateResolver {
         if (token.isNullOrBlank()) return null
         var t = token.trim()
         t = (DATE_ALIAS[t.lowercase()] ?: t).replace(" ", "")
+        // 요일 별칭: '이번목요일'/'이번주목요일'/'다음금요일' → '이번주목'/'다음주금'
+        t = Regex("(이번|다음|다다음)주?([월화수목금토일])요일").replace(t) {
+            "${it.groupValues[1]}주${it.groupValues[2]}"
+        }
         when (t) {
             "오늘" -> return r
             "내일" -> return r.plusDays(1)
@@ -58,6 +62,15 @@ object DateResolver {
             val toSat = ((6 - r.dayOfWeek.value) % 7 + 7) % 7   // 다가오는 토요일까지 일수
             val sat = r.plusDays(toSat.toLong())
             return if (t == "다음주말") sat.plusWeeks(1) else sat
+        }
+        Regex("^(\\d{1,2})일$").find(t)?.let {          // 단독 일자 → 가까운 미래 N일
+            val n = it.groupValues[1].toInt()
+            var cand = r.withDayOfMonth(minOf(n, r.lengthOfMonth()))
+            if (cand.isBefore(r)) {
+                val nm = r.plusMonths(1)
+                cand = nm.withDayOfMonth(minOf(n, nm.lengthOfMonth()))
+            }
+            return cand
         }
         if (Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(t)) {
             return try { LocalDate.parse(t) } catch (e: Exception) { null }
