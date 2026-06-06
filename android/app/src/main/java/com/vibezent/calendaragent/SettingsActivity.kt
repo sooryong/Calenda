@@ -90,6 +90,27 @@ class SettingsActivity : AppCompatActivity() {
 
         // 디버그(수동 추출)
         binding.debugButton.setOnClickListener { startActivity(Intent(this, DebugActivity::class.java)) }
+
+        refreshModelInfo()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshModelInfo()  // 디버그 화면에서 모델 임포트/교체 후 돌아오면 갱신
+    }
+
+    /** 설치된 gguf 버전(general.name)·업로드 시각 표시. 없으면 임포트 안내. */
+    private fun refreshModelInfo() {
+        val f = ModelStore.modelFile(this)
+        binding.modelInfo.text = if (f.exists()) {
+            val info = GgufInfo.read(f)
+            val name = info.name ?: getString(R.string.model_version_unknown)
+            val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.KOREA)
+                .format(java.util.Date(info.lastModified))
+            getString(R.string.model_version_fmt, name, date)
+        } else {
+            getString(R.string.model_missing)
+        }
     }
 
     private fun updateExportButton(n: Int) {

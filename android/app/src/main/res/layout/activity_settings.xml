@@ -18,7 +18,40 @@
             android:textSize="20sp"
             android:layout_marginBottom="12dp" />
 
+        <!-- 모델 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/section_model"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
+
+        <TextView
+            android:id="@+id/modelInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
         <!-- 자동 등록 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_autoadd"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
+
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/autoAddSwitch"
             android:layout_width="match_parent"
@@ -63,13 +96,20 @@
             android:textColor="?android:attr/textColorSecondary" />
 
         <!-- 채널 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:text="@string/channels_label"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/chKakao"
@@ -98,13 +138,20 @@
             android:textColor="?android:attr/textColorSecondary" />
 
         <!-- 백그라운드 수집 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:text="@string/collector_section"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/collectorSwitch"
@@ -127,13 +174,20 @@
             android:text="@string/battery_exempt" />
 
         <!-- 학습 데이터 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:text="@string/learning_label"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
 
         <TextView
             android:layout_width="match_parent"

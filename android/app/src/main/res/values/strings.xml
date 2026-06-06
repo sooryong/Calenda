@@ -7,6 +7,9 @@
     <string name="model_missing">모델 없음 — gguf 파일 임포트 필요</string>
     <string name="model_version_fmt">버전: %1$s · 업로드: %2$s</string>
     <string name="model_version_unknown">버전 미상</string>
+    <!-- 설정 화면 섹션 제목 (디버그 화면의 번호 붙은 title_model과 별개) -->
+    <string name="section_model">모델</string>
+    <string name="section_autoadd">자동 등록</string>
     <string name="load_model">모델 로드</string>
     <string name="reload_model">모델 재로드</string>
     <string name="import_model">모델 파일 임포트 (.gguf)</string>
