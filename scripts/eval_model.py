@@ -44,6 +44,10 @@ def time_match(a: str | None, b: str | None) -> bool:
         return True
     if da is None or db is None:
         return False
+    # 마감/종일: 한쪽이 날짜만(start에 'T' 없음)이면 날짜로만 비교 →
+    # all_day(시간없음) ↔ 시각(예: 18시까지 접수) 둘 다 정답 처리(제품 결정).
+    if (a and "T" not in a) or (b and "T" not in b):
+        return da.date() == db.date()
     return abs((da - db).total_seconds()) <= TIME_TOLERANCE_MIN * 60
 
 
