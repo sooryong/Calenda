@@ -130,11 +130,13 @@
     <string name="step_model">온디바이스 모델 (.gguf)</string>
     <string name="step_notif">알림 표시</string>
     <string name="step_cal">캘린더 등록</string>
+    <string name="step_cal_select">저장할 캘린더</string>
     <string name="step_sms">문자(SMS) 수집</string>
     <string name="step_kakao">카카오톡·Gmail 알림 접근</string>
     <string name="onboarding_start">시작하기</string>
     <string name="onboarding_guide">설정 가이드</string>
     <string name="action_grant">허용</string>
     <string name="action_import">임포트</string>
+    <string name="action_select">선택</string>
     <string name="step_done">✓</string>
 </resources>

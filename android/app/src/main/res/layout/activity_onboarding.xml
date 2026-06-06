@@ -86,6 +86,26 @@
                 android:text="@string/action_grant" />
         </LinearLayout>
 
+        <!-- 저장할 캘린더 선택 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+            <TextView
+                android:id="@+id/stepCalSelectLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp" />
+            <Button
+                android:id="@+id/btnCalSelect"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/action_select" />
+        </LinearLayout>
+
         <!-- 문자 -->
         <LinearLayout
             android:layout_width="match_parent"

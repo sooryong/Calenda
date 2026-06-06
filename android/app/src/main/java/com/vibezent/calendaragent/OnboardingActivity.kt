@@ -50,6 +50,7 @@ class OnboardingActivity : AppCompatActivity() {
         binding.btnCal.setOnClickListener {
             reqPerms.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
         }
+        binding.btnCalSelect.setOnClickListener { CalendarPicker.show(this) { refresh() } }
         binding.btnSms.setOnClickListener { reqPerms.launch(arrayOf(Manifest.permission.RECEIVE_SMS)) }
         binding.btnKakao.setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
         binding.startButton.setOnClickListener {
@@ -75,6 +76,7 @@ class OnboardingActivity : AppCompatActivity() {
         step(binding.stepModelLabel, binding.btnModel, getString(R.string.step_model), ModelStore.exists(this))
         step(binding.stepNotifLabel, binding.btnNotif, getString(R.string.step_notif), granted(Manifest.permission.POST_NOTIFICATIONS))
         step(binding.stepCalLabel, binding.btnCal, getString(R.string.step_cal), granted(Manifest.permission.WRITE_CALENDAR))
+        step(binding.stepCalSelectLabel, binding.btnCalSelect, getString(R.string.step_cal_select), SettingsStore.from(this).targetCalendarId != -1L)
         step(binding.stepSmsLabel, binding.btnSms, getString(R.string.step_sms), granted(Manifest.permission.RECEIVE_SMS))
         step(binding.stepKakaoLabel, binding.btnKakao, getString(R.string.step_kakao), listenerOn())
     }

@@ -108,24 +108,7 @@ class SettingsActivity : AppCompatActivity() {
             else getString(R.string.calendar_select)
     }
 
-    private fun pickCalendar() {
-        val cals = CalendarWriter.selectableCalendars(this)
-        if (cals.isEmpty()) {
-            Toast.makeText(this, R.string.calendar_none, Toast.LENGTH_LONG).show()
-            return
-        }
-        val labels = cals.map { "${it.display}\n${it.account}" }.toTypedArray()
-        val checked = cals.indexOfFirst { it.id == settings.targetCalendarId }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.calendar_picker_title)
-            .setSingleChoiceItems(labels, checked) { dialog, which ->
-                settings.targetCalendarId = cals[which].id
-                refreshCalendarButton()
-                dialog.dismiss()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
+    private fun pickCalendar() = CalendarPicker.show(this) { refreshCalendarButton() }
 
     override fun onResume() {
         super.onResume()
