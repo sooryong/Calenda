@@ -27,11 +27,13 @@ object MessagePipeline {
 
     /** 리시버/리스너에서 호출. applicationContext를 넘길 것. */
     fun onMessage(appCtx: Context, msg: IncomingMessage) {
-        if (msg.body.isBlank()) return
-        if (!SettingsStore.from(appCtx).channelEnabled(msg.channel)) return  // 채널 토글 OFF
+        Log.d(TAG, "onMessage ch=${msg.channel} sender=${msg.sender} body=\"${msg.body.take(40)}\"")
+        if (msg.body.isBlank()) { Log.d(TAG, "skip: blank body"); return }
+        if (!SettingsStore.from(appCtx).channelEnabled(msg.channel)) { Log.d(TAG, "skip: channel ${msg.channel} disabled"); return }
         val isNew = ConversationBuffer.add(msg)
-        if (!isNew) return                                   // 중복 알림 재게시 등
-        if (!ScheduleHeuristics.looksScheduleRelated(msg.body)) return  // 배터리 절약 사전 필터
+        if (!isNew) { Log.d(TAG, "skip: duplicate (ConversationBuffer)"); return }
+        if (!ScheduleHeuristics.looksScheduleRelated(msg.body)) { Log.d(TAG, "skip: heuristic pre-filter"); return }
+        Log.d(TAG, "accepted → inference")
         worker.launch { runInference(appCtx, msg) }
     }
 
