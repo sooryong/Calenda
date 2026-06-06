@@ -31,6 +31,7 @@ SOURCES = [
     {"path": "data/processed/kakao_real.jsonl",       "kind": "keep", "real": True},   # 실데이터: 카톡(캡처)
     {"path": "data/processed/ad_negative.jsonl",      "kind": "keep", "real": False},  # 하드네거티브: 광고/프로모션/알림톡(브랜드 발신, 날짜 박힘)
     {"path": "data/processed/r14_hardcases.jsonl",     "kind": "keep", "real": False},  # r14: gmail음성·광고보강·제3자·마감=종일(r13 실패분석)
+    {"path": "data/processed/r15_hardcases.jsonl",     "kind": "keep", "real": False},  # r15: gmail업무음성·광고·제3자·재난경보·마감종일·환각억제·terse·멀티턴(r14 실패분석)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
 
 ]
