@@ -73,7 +73,7 @@
                     android:text="0"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="@color/purple_500" />
+                    android:textColor="@color/count_number" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -99,7 +99,7 @@
                     android:text="0"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="@color/purple_500" />
+                    android:textColor="@color/count_number" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -125,7 +125,7 @@
                     android:text="0"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="@color/purple_500" />
+                    android:textColor="@color/count_number" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -151,7 +151,7 @@
                     android:text="0"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="@color/purple_500" />
+                    android:textColor="@color/count_number" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
