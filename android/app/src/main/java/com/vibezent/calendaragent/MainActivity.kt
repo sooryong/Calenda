@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -23,14 +24,14 @@ import java.util.Locale
  * 메인 대시보드 '오늘 받은 일정':
  *   - 상단: 채널별 '등록' 현황 칩(테마색)
  *   - 한 목록에 [예비](미등록·일정 오늘 이후) + [오늘 등록]된 건을 통합, 상태 배지+액션
- *   - 예비: 등록/편집/무시 · 등록: 취소/편집. 등록하면 같은 자리에서 배지가 [등록]으로 전환.
+ *   - 버튼은 항상 [삭제][등록]: 미등록=삭제(폐기)/등록(활성), 등록됨=삭제(캘린더서도 삭제)/등록(회색 비활성). 편집은 카드 탭.
  *   - 예비는 일정 날짜가 지나면 자동 삭제(purgePastPending).
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(::onPrimary, ::onSecondary, ::onEdit)
+    private val adapter = EventAdapter(::onDelete, ::onRegister, ::onEdit)
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,16 +79,31 @@ class MainActivity : AppCompatActivity() {
     }.timeInMillis
 
     // ── 목록 액션 ─────────────────────────────
-    private fun onPrimary(e: DetectedEvent) {
-        when (e.status) {
-            EventStatus.PENDING, EventStatus.DISMISSED -> addToCalendar(e)   // 등록
-            EventStatus.ADDED, EventStatus.AUTO_ADDED -> undo(e)             // 취소
+    /** 삭제: 등록됨이면 캘린더에서도 삭제(확인), 미등록이면 제안 폐기. 어느 쪽이든 카드는 사라짐(DISMISSED). */
+    private fun onDelete(e: DetectedEvent) {
+        val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        if (registered) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.delete_cal_title)
+                .setMessage(R.string.delete_cal_msg)
+                .setPositiveButton(R.string.dialog_delete) { _, _ -> doDelete(e, deleteCal = true) }
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show()
+        } else {
+            doDelete(e, deleteCal = false)
         }
     }
 
-    private fun onSecondary(e: DetectedEvent) {  // 무시
-        lifecycleScope.launch { withContext(Dispatchers.IO) { repo.setStatus(e.id, EventStatus.DISMISSED, null) } }
+    private fun doDelete(e: DetectedEvent, deleteCal: Boolean) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                if (deleteCal) e.calendarEventId?.let { CalendarWriter.delete(this@MainActivity, it) }
+                repo.setStatus(e.id, EventStatus.DISMISSED, null)
+            }
+        }
     }
+
+    private fun onRegister(e: DetectedEvent) = addToCalendar(e)
 
     private fun onEdit(e: DetectedEvent) {
         startActivity(Intent(this, EventEditActivity::class.java).putExtra(EventEditActivity.EXTRA_ID, e.id))
@@ -110,12 +126,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun undo(e: DetectedEvent) {
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                e.calendarEventId?.let { CalendarWriter.delete(this@MainActivity, it) }
-                repo.setStatus(e.id, EventStatus.DISMISSED, null)
-            }
-        }
-    }
 }

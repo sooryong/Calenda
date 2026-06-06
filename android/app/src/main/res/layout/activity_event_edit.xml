@@ -11,11 +11,20 @@
         android:padding="16dp">
 
         <TextView
+            android:id="@+id/statusLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:text="@string/edit_status_scheduled" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/edit_title"
             android:textStyle="bold"
             android:textSize="20sp"
+            android:layout_marginTop="2dp"
             android:layout_marginBottom="12dp" />
 
         <EditText
@@ -77,11 +86,26 @@
             android:minLines="2"
             android:gravity="top" />
 
-        <Button
-            android:id="@+id/saveButton"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/save_and_add" />
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/deleteButton"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/act_delete" />
+
+            <Button
+                android:id="@+id/saveButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/save_and_add" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

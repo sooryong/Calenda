@@ -5,11 +5,21 @@ import android.util.Log
 
 /**
  * 저장된 감지 일정을 등록 정책에 따라 라우팅한다.
- *   - 자동등록 ON & confidence ≥ 임계값 & 캘린더 권한 있음 → 바로 등록(AUTO_ADDED) + '되돌리기' 알림
- *   - 그 외 → 확인 알림(추가/무시 액션)으로 사용자에게 위임 (상태 PENDING 유지)
+ *   - 자동등록 ON & confidence ≥ 임계값 & 캘린더 권한 있음 & (엄격모드면 What+When+Where 충족) → 바로 등록(AUTO_ADDED) + '되돌리기' 알림
+ *   - 그 외 → 확인 알림(추가/무시 액션)으로 사용자에게 위임 (상태 PENDING 유지). 놓침 없음, 한 번 탭하면 등록.
+ *
+ * 엄격 등록(strictRegister): 일정은 '누가(Who)·언제(When)·무엇을(What)·어디서(Where)'.
+ * What·When·Where가 모두 명확할 때만 자동 등록하고, 하나라도 없으면 예비로 보류해 오탐을 줄인다.
+ * Who(누가)는 메시지 발신자가 항상 1명 존재하므로 충족된 것으로 보고 별도 검사하지 않는다.
  */
 object EventRouter {
     private const val TAG = "EventRouter"
+
+    /** 등록 기준 충족? What=제목, When=일시(start), Where=장소. Who는 발신자로 항상 충족. */
+    private fun meetsStrictCriteria(e: CalendarEvent): Boolean =
+        e.title.isNotBlank() &&
+            !e.start.isNullOrBlank() &&
+            !e.location.isNullOrBlank()
 
     suspend fun route(
         appCtx: Context, repo: EventRepository, id: Long, event: CalendarEvent, msg: IncomingMessage,
@@ -17,7 +27,8 @@ object EventRouter {
         val settings = SettingsStore.from(appCtx)
         val autoEligible = settings.autoAddEnabled &&
             (event.confidence >= settings.confidenceThreshold) &&
-            CalendarWriter.hasPermission(appCtx)
+            CalendarWriter.hasPermission(appCtx) &&
+            (!settings.strictRegister || meetsStrictCriteria(event))
 
         if (autoEligible) {
             val calId = CalendarWriter.insert(appCtx, event)

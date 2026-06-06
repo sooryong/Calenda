@@ -3,7 +3,6 @@ package com.vibezent.calendaragent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -13,14 +12,14 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 이벤트함 목록 어댑터. 상태별로 두 액션 버튼(주/보조)을 다르게 표시:
- *   PENDING   → [캘린더에 추가] [무시]
- *   ADDED/AUTO→ [되돌리기]  (보조 숨김)
- *   DISMISSED → [다시 추가]  (보조 숨김)
+ * 이벤트함 목록 어댑터. 버튼은 항상 [삭제][등록] 두 개:
+ *   미등록(PENDING/DISMISSED) → [삭제](폐기) [등록](활성)
+ *   등록됨(ADDED/AUTO_ADDED)   → [삭제](캘린더에서도 삭제) [등록](회색 비활성=이미 등록)
+ * 카드 본문 탭 → 편집 화면(시간·제목·장소 수정 후 등록/삭제).
  */
 class EventAdapter(
-    private val onPrimary: (DetectedEvent) -> Unit,
-    private val onSecondary: (DetectedEvent) -> Unit,
+    private val onDelete: (DetectedEvent) -> Unit,
+    private val onRegister: (DetectedEvent) -> Unit,
     private val onEdit: (DetectedEvent) -> Unit,
 ) : ListAdapter<DetectedEvent, EventAdapter.VH>(DIFF) {
 
@@ -36,22 +35,6 @@ class EventAdapter(
         val ctx = holder.b.root.context
         val b = holder.b
 
-        b.statusBadge.text = when (e.status) {
-            EventStatus.PENDING -> ctx.getString(R.string.status_pending)
-            EventStatus.ADDED -> ctx.getString(R.string.status_added)
-            EventStatus.AUTO_ADDED -> ctx.getString(R.string.status_auto)
-            EventStatus.DISMISSED -> ctx.getString(R.string.status_dismissed)
-        }
-        b.statusBadge.setTextColor(
-            ContextCompat.getColor(
-                ctx,
-                when (e.status) {
-                    EventStatus.ADDED, EventStatus.AUTO_ADDED -> R.color.purple_500  // 등록=테마 보라
-                    EventStatus.PENDING -> R.color.amber_600                          // 예비=앰버
-                    EventStatus.DISMISSED -> R.color.chip_zero
-                },
-            ),
-        )
         b.eventTitle.text = e.title
         b.eventTime.text = prettyTime(e.start, e.allDay)
 
@@ -65,27 +48,19 @@ class EventAdapter(
         val conf = (e.confidence * 100).toInt()
         b.eventMeta.text = "${e.channel} · ${e.sender} · 신뢰도 ${conf}%"
 
-        when (e.status) {
-            EventStatus.PENDING -> {
-                b.btnPrimary.visibility = View.VISIBLE
-                b.btnPrimary.text = ctx.getString(R.string.act_add)
-                b.btnSecondary.visibility = View.VISIBLE
-                b.btnSecondary.text = ctx.getString(R.string.act_dismiss)
-            }
-            EventStatus.ADDED, EventStatus.AUTO_ADDED -> {
-                b.btnPrimary.visibility = View.VISIBLE
-                b.btnPrimary.text = ctx.getString(R.string.act_undo)
-                b.btnSecondary.visibility = View.GONE
-            }
-            EventStatus.DISMISSED -> {
-                b.btnPrimary.visibility = View.VISIBLE
-                b.btnPrimary.text = ctx.getString(R.string.act_readd)
-                b.btnSecondary.visibility = View.GONE
-            }
-        }
-        b.btnPrimary.setOnClickListener { onPrimary(e) }
-        b.btnSecondary.setOnClickListener { onSecondary(e) }
-        b.btnEdit.setOnClickListener { onEdit(e) }
+        val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+
+        // 삭제: 항상 활성. (등록됨이면 핸들러가 캘린더 삭제까지 확인 후 수행)
+        b.btnPrimary.text = ctx.getString(R.string.act_delete)
+        b.btnPrimary.setOnClickListener { onDelete(e) }
+
+        // 등록: 미등록이면 활성, 등록됨이면 회색 비활성(이미 등록 표시).
+        b.btnSecondary.text = ctx.getString(R.string.act_add)
+        b.btnSecondary.isEnabled = !registered
+        b.btnSecondary.setOnClickListener { onRegister(e) }
+
+        // 편집: 카드 본문 탭.
+        b.root.setOnClickListener { onEdit(e) }
     }
 
     private fun prettyTime(start: String?, allDay: Boolean): String {

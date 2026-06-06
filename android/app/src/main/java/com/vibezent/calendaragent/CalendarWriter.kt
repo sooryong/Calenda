@@ -55,6 +55,44 @@ object CalendarWriter {
         }
     }
 
+    /** 기존 캘린더 일정 제자리 수정(편집 후 [업데이트]). 성공 시 true. */
+    fun update(ctx: Context, calendarEventId: Long, event: CalendarEvent): Boolean {
+        if (!hasPermission(ctx)) return false
+        val startMs = parseIso(event.start) ?: return false
+        val tz = TimeZone.getDefault().id
+
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.TITLE, event.title)
+            put(CalendarContract.Events.EVENT_LOCATION, event.location ?: "")      // 빈 문자열=장소 지움
+            put(CalendarContract.Events.DESCRIPTION, buildDescription(event) ?: "")
+            put(CalendarContract.Events.DTSTART, startMs)
+            put(CalendarContract.Events.EVENT_TIMEZONE, tz)
+            val rrule = event.recurrence
+            if (rrule != null) {
+                put(CalendarContract.Events.RRULE, rrule)
+                put(CalendarContract.Events.DURATION, "PT1H")
+                putNull(CalendarContract.Events.DTEND)
+                put(CalendarContract.Events.ALL_DAY, 0)
+            } else if (event.allDay) {
+                put(CalendarContract.Events.ALL_DAY, 1)
+                put(CalendarContract.Events.DTEND, startMs + 24 * 60 * 60 * 1000L)
+                putNull(CalendarContract.Events.RRULE)
+                putNull(CalendarContract.Events.DURATION)
+            } else {
+                put(CalendarContract.Events.ALL_DAY, 0)
+                put(CalendarContract.Events.DTEND, parseIso(event.end) ?: (startMs + 60 * 60 * 1000L))
+                putNull(CalendarContract.Events.RRULE)
+                putNull(CalendarContract.Events.DURATION)
+            }
+        }
+        return try {
+            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, calendarEventId)
+            ctx.contentResolver.update(uri, values, null, null) > 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /** 자동 등록 되돌리기: calendar event 삭제. */
     fun delete(ctx: Context, calendarEventId: Long): Boolean {
         if (!hasPermission(ctx)) return false

@@ -19,6 +19,11 @@ class SettingsStore(ctx: Context) {
         get() = prefs.getFloat(K_THRESHOLD, 0.85f)
         set(v) = prefs.edit().putFloat(K_THRESHOLD, v).apply()
 
+    /** 엄격 등록: 제목·일시·장소(What·When·Where)가 모두 있어야 자동 등록. Who는 발신자로 충족. 하나라도 없으면 예비. */
+    var strictRegister: Boolean
+        get() = prefs.getBoolean(K_STRICT, true)
+        set(v) = prefs.edit().putBoolean(K_STRICT, v).apply()
+
     fun channelEnabled(channel: String): Boolean =
         prefs.getBoolean(keyChannel(channel), true)
 
@@ -40,6 +45,7 @@ class SettingsStore(ctx: Context) {
     companion object {
         private const val K_AUTO_ADD = "auto_add"
         private const val K_THRESHOLD = "confidence_threshold"
+        private const val K_STRICT = "strict_register"
         private const val K_COLLECTOR = "collector_enabled"
         private const val K_ONBOARDING = "onboarding_done"
         fun from(ctx: Context) = SettingsStore(ctx)

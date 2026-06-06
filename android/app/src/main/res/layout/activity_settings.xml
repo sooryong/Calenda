@@ -47,6 +47,21 @@
             android:min="50"
             android:max="100" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/strictRegisterSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/strict_register_label"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/strict_register_desc"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
         <!-- 채널 -->
         <TextView
             android:layout_width="wrap_content"

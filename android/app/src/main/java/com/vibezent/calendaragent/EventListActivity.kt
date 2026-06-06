@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -22,7 +23,7 @@ class EventListActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityEventListBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(onPrimary = ::onPrimary, onSecondary = ::onSecondary, onEdit = ::onEdit)
+    private val adapter = EventAdapter(onDelete = ::onDelete, onRegister = ::onRegister, onEdit = ::onEdit)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,20 +43,31 @@ class EventListActivity : AppCompatActivity() {
         }
     }
 
-    /** 주 버튼: PENDING/DISMISSED → 캘린더 추가, ADDED/AUTO_ADDED → 되돌리기. */
-    private fun onPrimary(e: DetectedEvent) {
-        when (e.status) {
-            EventStatus.PENDING, EventStatus.DISMISSED -> addToCalendar(e)
-            EventStatus.ADDED, EventStatus.AUTO_ADDED -> undo(e)
+    /** 삭제: 등록됨이면 캘린더에서도 삭제(확인), 미등록이면 제안 폐기. 카드는 사라짐(DISMISSED). */
+    private fun onDelete(e: DetectedEvent) {
+        val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        if (registered) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.delete_cal_title)
+                .setMessage(R.string.delete_cal_msg)
+                .setPositiveButton(R.string.dialog_delete) { _, _ -> doDelete(e, deleteCal = true) }
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show()
+        } else {
+            doDelete(e, deleteCal = false)
         }
     }
 
-    /** 보조 버튼: PENDING → 무시. */
-    private fun onSecondary(e: DetectedEvent) {
+    private fun doDelete(e: DetectedEvent, deleteCal: Boolean) {
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) { repo.setStatus(e.id, EventStatus.DISMISSED, null) }
+            withContext(Dispatchers.IO) {
+                if (deleteCal) e.calendarEventId?.let { CalendarWriter.delete(this@EventListActivity, it) }
+                repo.setStatus(e.id, EventStatus.DISMISSED, null)
+            }
         }
     }
+
+    private fun onRegister(e: DetectedEvent) = addToCalendar(e)
 
     /** 편집: 편집 화면 열기. */
     private fun onEdit(e: DetectedEvent) {
@@ -85,12 +97,4 @@ class EventListActivity : AppCompatActivity() {
         }
     }
 
-    private fun undo(e: DetectedEvent) {
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                e.calendarEventId?.let { CalendarWriter.delete(this@EventListActivity, it) }
-                repo.setStatus(e.id, EventStatus.DISMISSED, null)
-            }
-        }
-    }
 }

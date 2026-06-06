@@ -53,14 +53,20 @@
     <string name="open_inbox">이벤트함 열기</string>
     <string name="inbox_empty">감지된 일정이 없습니다.\n메시지가 오면 여기에 모입니다.</string>
     <string name="status_pending">예비</string>
-    <string name="status_added">등록</string>
-    <string name="status_auto">등록</string>
+    <string name="status_added">✓ 등록됨</string>
+    <string name="status_auto">✓ 등록됨</string>
     <string name="status_dismissed">무시됨</string>
     <string name="act_add">등록</string>
+    <string name="act_delete">삭제</string>
     <string name="act_readd">다시 등록</string>
     <string name="act_dismiss">무시</string>
     <string name="act_undo">취소</string>
     <string name="act_edit">편집</string>
+    <!-- 등록된 일정 삭제 확인 -->
+    <string name="delete_cal_title">캘린더에서 삭제</string>
+    <string name="delete_cal_msg">이 일정을 캘린더에서도 삭제할까요?</string>
+    <string name="dialog_delete">삭제</string>
+    <string name="dialog_cancel">취소</string>
     <string name="inbox_no_calendar">캘린더 앱에서 저장을 완료하세요</string>
     <string name="calendar_add_failed">캘린더 추가 실패</string>
 
@@ -76,6 +82,9 @@
     <string name="save">저장</string>
     <string name="save_and_add">저장 후 캘린더에 추가</string>
     <string name="saved">저장됨</string>
+    <string name="edit_status_registered">등록됨</string>
+    <string name="edit_status_scheduled">예정</string>
+    <string name="act_update">업데이트</string>
 
     <!-- 설정 화면 (Phase C-3) -->
     <string name="settings_title">설정</string>
@@ -83,6 +92,8 @@
     <string name="auto_add_label">고신뢰도 일정 자동 등록</string>
     <string name="auto_add_desc">신뢰도가 임계값 이상이면 확인 없이 캘린더에 등록(되돌리기 가능)</string>
     <string name="threshold_label">자동 등록 임계값: %1$d%%</string>
+    <string name="strict_register_label">엄격한 자동 등록 (장소까지 명확할 때만)</string>
+    <string name="strict_register_desc">제목·시간·장소가 모두 있을 때만 자동 등록하고, 하나라도 없으면 예비로 보류합니다(오탐 감소). ‘누구’는 발신자가 있으니 충족된 것으로 봅니다. 보류된 일정도 카드에서 한 번 탭하면 등록됩니다.</string>
     <string name="channels_label">수집 채널</string>
     <string name="ch_kakao">카카오톡</string>
     <string name="ch_sms">문자(SMS)</string>

@@ -4,7 +4,10 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import com.vibezent.calendaragent.databinding.ActivityEventEditBinding
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +30,8 @@ class EventEditActivity : AppCompatActivity() {
     private val repo by lazy { EventRepository.from(this) }
     private val cal: Calendar = Calendar.getInstance()
     private var current: DetectedEvent? = null
+    private var registered = false          // 등록된 일정인가(ADDED/AUTO_ADDED)
+    private var initialSig: String? = null  // 로드 직후 폼 스냅샷 — 변경 감지(업데이트 버튼 활성화)용
 
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA)
     private val timeFmt = SimpleDateFormat("HH:mm", Locale.KOREA)
@@ -42,8 +47,18 @@ class EventEditActivity : AppCompatActivity() {
 
         binding.btnDate.setOnClickListener { pickDate() }
         binding.btnTime.setOnClickListener { pickTime() }
-        binding.allDayCheck.setOnCheckedChangeListener { _, checked -> binding.btnTime.isEnabled = !checked }
+        binding.allDayCheck.setOnCheckedChangeListener { _, checked ->
+            binding.btnTime.isEnabled = !checked
+            refreshButtons()
+        }
         binding.saveButton.setOnClickListener { save() }
+        binding.deleteButton.setOnClickListener { onDelete() }
+
+        // 변경 감지 → [업데이트] 활성/비활성 (예정 일정의 [등록]은 항상 활성).
+        binding.editTitle.addTextChangedListener { onFormChanged() }
+        binding.editLocation.addTextChangedListener { onFormChanged() }
+        binding.editAttendees.addTextChangedListener { onFormChanged() }
+        binding.editDescription.addTextChangedListener { onFormChanged() }
 
         lifecycleScope.launch {
             val e = withContext(Dispatchers.IO) { repo.get(id) }
@@ -62,6 +77,34 @@ class EventEditActivity : AppCompatActivity() {
         binding.btnTime.isEnabled = !e.allDay
         parseInto(cal, e.start)
         refreshButtons()
+
+        registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        binding.statusLabel.text =
+            getString(if (registered) R.string.edit_status_registered else R.string.edit_status_scheduled)
+        binding.statusLabel.setTextColor(
+            ContextCompat.getColor(this, if (registered) R.color.purple_500 else R.color.amber_600),
+        )
+        // 예정 → [등록](항상 활성). 등록됨 → [업데이트](변경 있을 때만 활성).
+        binding.saveButton.text = getString(if (registered) R.string.act_update else R.string.act_add)
+        initialSig = formSig()
+        binding.saveButton.isEnabled = !registered
+    }
+
+    /** 폼 전체 스냅샷 문자열 — initialSig와 비교해 변경 여부 판정. */
+    private fun formSig(): String = listOf(
+        binding.editTitle.text.toString().trim(),
+        binding.editLocation.text.toString().trim(),
+        binding.editAttendees.text.toString().trim(),
+        binding.editDescription.text.toString().trim(),
+        binding.allDayCheck.isChecked.toString(),
+        dateFmt.format(cal.time),
+        if (binding.allDayCheck.isChecked) "" else timeFmt.format(cal.time),
+    ).joinToString("")
+
+    /** 등록된 일정이면 변경 있을 때만 [업데이트] 활성화. 예정이면 [등록]은 늘 활성. */
+    private fun onFormChanged() {
+        if (initialSig == null) return  // populate 중 refreshButtons 호출은 무시
+        binding.saveButton.isEnabled = if (registered) formSig() != initialSig else true
     }
 
     private fun parseInto(c: Calendar, iso: String?) {
@@ -78,6 +121,7 @@ class EventEditActivity : AppCompatActivity() {
     private fun refreshButtons() {
         binding.btnDate.text = dateFmt.format(cal.time)
         binding.btnTime.text = if (binding.allDayCheck.isChecked) getString(R.string.all_day) else timeFmt.format(cal.time)
+        onFormChanged()
     }
 
     private fun pickDate() {
@@ -115,23 +159,55 @@ class EventEditActivity : AppCompatActivity() {
             AliasStore.from(this).markNotPlace(cur.sender, oldLoc)
         }
 
+        // 등록됨 → 기존 캘린더 일정 제자리 수정([업데이트]). 예정 → 새로 등록([등록]).
+        val isUpdate = registered && cur.calendarEventId != null
         lifecycleScope.launch {
             val calId = withContext(Dispatchers.IO) {
-                if (CalendarWriter.hasPermission(this@EventEditActivity)) CalendarWriter.insert(this@EventEditActivity, ce) else null
+                when {
+                    !CalendarWriter.hasPermission(this@EventEditActivity) -> null
+                    isUpdate -> if (CalendarWriter.update(this@EventEditActivity, cur.calendarEventId!!, ce)) cur.calendarEventId else null
+                    else -> CalendarWriter.insert(this@EventEditActivity, ce)
+                }
             }
             val row = cur.copy(
                 title = title, start = startIso, end = null, allDay = allDay,
                 location = loc, attendees = attendees, description = desc, editedJson = edited,
                 status = if (calId != null) EventStatus.ADDED else cur.status,
                 calendarEventId = calId ?: cur.calendarEventId,
-                registeredAt = if (calId != null) System.currentTimeMillis() else cur.registeredAt,
+                registeredAt = if (calId != null && !isUpdate) System.currentTimeMillis() else cur.registeredAt,
             )
             withContext(Dispatchers.IO) { repo.update(row) }
-            if (calId == null) {
-                // 권한 없음/등록 실패 → 시스템 캘린더 UI로 위임
+            if (calId == null && !isUpdate) {
+                // 신규 등록인데 권한 없음/실패 → 시스템 캘린더 UI로 위임 (업데이트 실패는 위임 안 함=중복 방지)
                 try { CalendarInserter.launch(this@EventEditActivity, ce) } catch (_: Exception) {}
             }
             Toast.makeText(this@EventEditActivity, R.string.saved, Toast.LENGTH_SHORT).show()
+            finish()
+        }
+    }
+
+    /** 삭제: 등록됨이면 캘린더에서도 삭제(확인), 미등록이면 제안 폐기. 둘 다 DISMISSED 처리 후 종료. */
+    private fun onDelete() {
+        val cur = current ?: return
+        val registered = cur.status == EventStatus.ADDED || cur.status == EventStatus.AUTO_ADDED
+        if (registered) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.delete_cal_title)
+                .setMessage(R.string.delete_cal_msg)
+                .setPositiveButton(R.string.dialog_delete) { _, _ -> doDelete(cur, deleteCal = true) }
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show()
+        } else {
+            doDelete(cur, deleteCal = false)
+        }
+    }
+
+    private fun doDelete(e: DetectedEvent, deleteCal: Boolean) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                if (deleteCal) e.calendarEventId?.let { CalendarWriter.delete(this@EventEditActivity, it) }
+                repo.setStatus(e.id, EventStatus.DISMISSED, null)
+            }
             finish()
         }
     }

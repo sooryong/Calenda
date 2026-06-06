@@ -51,6 +51,10 @@ class SettingsActivity : AppCompatActivity() {
             }
         })
 
+        // 엄격 등록(4W 필수)
+        binding.strictRegisterSwitch.isChecked = settings.strictRegister
+        binding.strictRegisterSwitch.setOnCheckedChangeListener { _, v -> settings.strictRegister = v }
+
         // 채널 토글
         binding.chKakao.isChecked = settings.channelEnabled("kakao")
         binding.chSms.isChecked = settings.channelEnabled("sms")
