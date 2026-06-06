@@ -109,6 +109,21 @@ class DebugActivity : AppCompatActivity() {
             }
         }
         binding.reimportButton.visibility = if (modelFile.exists()) View.VISIBLE else View.GONE
+        refreshModelVersion()
+    }
+
+    /** 설치된 gguf의 버전명(general.name)과 업로드 시각(파일 수정시각)을 표시. */
+    private fun refreshModelVersion() {
+        if (!modelFile.exists()) {
+            binding.modelVersion.visibility = View.GONE
+            return
+        }
+        val info = GgufInfo.read(modelFile)
+        val name = info.name ?: getString(R.string.model_version_unknown)
+        val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.KOREA)
+            .format(java.util.Date(info.lastModified))
+        binding.modelVersion.text = getString(R.string.model_version_fmt, name, date)
+        binding.modelVersion.visibility = View.VISIBLE
     }
 
     private fun pickModelFile() {

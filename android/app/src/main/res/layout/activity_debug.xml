@@ -25,6 +25,15 @@
             android:layout_marginTop="4dp"
             android:text="@string/model_missing" />
 
+        <TextView
+            android:id="@+id/modelVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
         <Button
             android:id="@+id/loadModelButton"
             android:layout_width="match_parent"
