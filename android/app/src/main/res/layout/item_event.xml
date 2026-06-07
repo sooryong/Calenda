@@ -52,6 +52,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:textColor="@color/btn_accent"
             android:text="@string/act_delete" />
 
         <!-- 등록: 미등록이면 활성, 등록됨이면 비활성(회색) — 등록 여부를 한눈에. -->
@@ -61,6 +62,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:textColor="@color/btn_accent"
             android:text="@string/act_add" />
     </LinearLayout>
 </LinearLayout>

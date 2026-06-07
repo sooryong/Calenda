@@ -79,7 +79,8 @@ class MainActivity : AppCompatActivity() {
     }.timeInMillis
 
     // ── 목록 액션 ─────────────────────────────
-    /** 삭제: 등록됨이면 캘린더에서도 삭제(확인), 미등록이면 제안 폐기. 어느 쪽이든 카드는 사라짐(DISMISSED). */
+    /** 메인 삭제 = 메인에서 숨김(DISMISSED). 이벤트함엔 남으며, 완전 삭제는 이벤트함에서만.
+     *  (등록됨이면 캘린더에서도 삭제할지 확인.) */
     private fun onDelete(e: DetectedEvent) {
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
         if (registered) {

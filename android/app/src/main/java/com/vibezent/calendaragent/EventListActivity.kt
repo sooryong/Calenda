@@ -43,28 +43,22 @@ class EventListActivity : AppCompatActivity() {
         }
     }
 
-    /** 삭제: 등록됨이면 캘린더에서도 삭제(확인), 미등록이면 제안 폐기. 카드는 사라짐(DISMISSED). */
+    /** 이벤트함 삭제 = 완전 제거(DB에서 삭제). 등록돼 있으면 캘린더 일정도 함께 삭제. */
     private fun onDelete(e: DetectedEvent) {
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
-        if (registered) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.delete_cal_title)
-                .setMessage(R.string.delete_cal_msg)
-                .setPositiveButton(R.string.dialog_delete) { _, _ -> doDelete(e, deleteCal = true) }
-                .setNegativeButton(R.string.dialog_cancel, null)
-                .show()
-        } else {
-            doDelete(e, deleteCal = false)
-        }
-    }
-
-    private fun doDelete(e: DetectedEvent, deleteCal: Boolean) {
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                if (deleteCal) e.calendarEventId?.let { CalendarWriter.delete(this@EventListActivity, it) }
-                repo.setStatus(e.id, EventStatus.DISMISSED, null)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.delete_full_title)
+            .setMessage(if (registered) R.string.delete_full_cal_msg else R.string.delete_full_msg)
+            .setPositiveButton(R.string.dialog_delete) { _, _ ->
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        if (registered) e.calendarEventId?.let { CalendarWriter.delete(this@EventListActivity, it) }
+                        repo.delete(e)
+                    }
+                }
             }
-        }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     /** 등록 토글: 미등록→캘린더 추가, 등록됨→캘린더에서 빼고 미등록(이벤트함엔 유지). */
