@@ -45,10 +45,15 @@ class EventAdapter(
             b.eventLocation.text = "📍 ${e.location}"
         }
 
-        val conf = (e.confidence * 100).toInt()
-        b.eventMeta.text = "${e.channel} · ${e.sender} · 신뢰도 ${conf}%"
-
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
+        // 메타: 채널 · 수신시각 · 신뢰도 [· 등록됨]. (발신자는 제목에 포함되므로 생략. 예비는 상태 표시 없음.)
+        val conf = (e.confidence * 100).toInt()
+        val chLabel = when (e.channel) { "sms" -> "SMS"; "kakao" -> "카톡"; "gmail" -> "Gmail"; else -> e.channel }
+        b.eventMeta.text = buildString {
+            append(chLabel).append(" · ").append(formatReceived(e.receivedAt, e.createdAt))
+            append(" · 신뢰도 ").append(conf).append("%")
+            if (registered) append(" · 등록됨")
+        }
 
         // 주 버튼 [삭제]: 메인=메인서 제거(+등록취소), 이벤트함=완전삭제. 동작은 화면 핸들러가 결정.
         b.btnPrimary.text = ctx.getString(R.string.act_delete)

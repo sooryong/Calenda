@@ -78,6 +78,11 @@ class EventEditActivity : AppCompatActivity() {
         parseInto(cal, e.start)
         refreshButtons()
 
+        // 읽기전용 메타: 채널 · 수신시각 · 신뢰도 (카드와 동일 정보)
+        val chLabel = when (e.channel) { "sms" -> "SMS"; "kakao" -> "카톡"; "gmail" -> "Gmail"; else -> e.channel }
+        binding.editMeta.text =
+            "$chLabel · ${formatReceived(e.receivedAt, e.createdAt)} 수신 · 신뢰도 ${(e.confidence * 100).toInt()}%"
+
         registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
         binding.statusLabel.text =
             getString(if (registered) R.string.edit_status_registered else R.string.edit_status_scheduled)
