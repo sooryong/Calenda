@@ -2,5 +2,5 @@
 <resources>
     <!-- 다크 테마: 카운트 숫자를 밝은 라벤더(M3 dark primary)로 → 어두운 칩 배경 대비 또렷.
          라이트 테마는 values/colors.xml의 진한 보라 그대로. -->
-    <color name="count_number">#FF8C7CD6</color>
+    <color name="count_number">#FF00C2FF</color>
 </resources>

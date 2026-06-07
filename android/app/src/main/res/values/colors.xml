@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_500">#FF8C7CD6</color>      <!-- 브랜드색: 페리윙클 보라(CLI '3 shells'). 테마 colorPrimary·로고·강조 단일 출처 -->
+    <color name="purple_500">#FF00C2FF</color>      <!-- 브랜드색: 네온 시안블루. 테마 colorPrimary·로고·강조 단일 출처 (이름은 호환 위해 purple_500 유지) -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="amber_600">#FFD08700</color>        <!-- 예비 배지 -->
     <color name="chip_zero">#4A4458</color>          <!-- 등록 0건 채널 칩(흐리게) -->
-    <color name="count_number">#FF8C7CD6</color>     <!-- 카운트 숫자 = 브랜드 페리윙클(통일) -->
-    <color name="btn_accent">#FF8C7CD6</color>       <!-- 카드 버튼 글자 = 브랜드 페리윙클(통일) -->
+    <color name="count_number">#FF00C2FF</color>     <!-- 카운트 숫자 = 브랜드 네온 시안블루 -->
+    <color name="btn_accent">#FF00C2FF</color>       <!-- 카드 버튼 글자 = 브랜드 네온 시안블루 -->
 </resources>
