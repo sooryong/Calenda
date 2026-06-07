@@ -4,30 +4,54 @@
 
 ---
 
-## 1. 현재 상태 (2026-06-06)
+## 1. 현재 상태 (2026-06-07)
 
-- ✅ **r16 폰 배포 완료** — `models/gguf/r16-qwen0.5b/r16-qwen0.5b.Q4_K_M.gguf`(380MB) → adb push(md5 검증) → 폰 슬롯 `/sdcard/Android/data/`**`com.calendaragent`**`/files/calendar.Q4_K_M.gguf`(applicationId 경로!). 설정 화면에 **"R16 Qwen0.5B"** 표시 확인됨. 직전 r15는 `.r15-bak`로 폰에 보관.
-- ✅ **데이터→학습→배포 파이프라인 r16까지 한 바퀴 검증**: 데이터(직접생성 hardcases) → Kaggle bf16 학습 → merge → quantize → 폰 push → 앱 재빌드. SMS 실수신 검출·자동등록 logcat으로 확인.
-- ✅ **평가 메트릭 개선**(`eval_model.py`): 결합 지표 외에 **디커플링** 추가 — `detection`(recall/specificity/과발화·놓침) + `extraction_on_true_positives`(올바로 검출된 양성 한정 title/time/loc). + **deadline 완화**: start가 날짜만이면 날짜로 비교(all_day↔시각 둘 다 정답). 진단용 `scripts/audit_eval.py`(per-item 덤프).
-- ✅ **resolver 보강**(`_common.py`+`DateResolver.kt` 미러, schema.md 갱신): 단독 **"N일"**(가까운 미래 N일) + **요일 별칭**(`이번목요일`→`이번주목`). r15 실패 sms_real_000/009 해결.
-- ✅ **앱 변경 다수 배포**: 카드 [삭제][등록] UX + 등록상태/편집 + 엄격 자동등록(이제 **장소 요구 제거**, 제목+시간만) / 설정·디버그 **모델 버전·업로드시각 표시** / 섹션 제목 강조색·구분선 / 메인 카운트 숫자 다크 라벤더 / 상단 상태바 겹침 해결(fitsSystemWindows) / 파이프라인 진단 로그.
-- ✅ **0.5B 유지 확정**(과거 r12에서 0.5B≈1.5B 무승부, 1.5B 3배 비용 → 0.5B). 병목은 모델크기 아니라 **precision(과발화)**.
+- ✅ **r18 폰 배포 완료(현재 배포본)** — 동결 base_r16 + 단독 "N일" 종일 양성 보강. `real_golden 43` 기준 **final 0.871**(r16 0.827 대비 개선). r17은 자기참조 풀 잠식으로 회귀(0.779)해 폐기 → r18은 **pool=base_r16 동결**로 복구. [[project_assemble_cap_erosion]]
+- ✅ **0.5B 유지 확정**. 병목은 모델크기 아니라 **precision(과발화)**. recall은 천장(1.0), time도 양호(~0.93). 남은 큰 공백은 **specificity ~0.71** 하나.
+- ✅ **앱: 캘린더 선택**(OAuth 없이 기기 캘린더 피커, 설정+온보딩) → 자동등록 대상 캘린더 지정. 종일 일정 **UTC 자정 버그 수정**(DTSTART/EVENT_TIMEZONE=UTC). `PREFERRED_ACCOUNT=sooryong.byun@gmail.com`.
+- ✅ **앱: 재수신 검출**(시간 인지 중복제거 — `dedupeKey`에 receivedAt + 10초 창) → 같은 메시지 다른 시각 재수신 시 다시 검출. ScheduleHeuristics에 단독 "N일" 인식 추가.
+- ✅ **앱: 카드·상세 메타 통일** — 채널·수신시각(M/d HH:mm)·신뢰도·등록상태를 카드와 편집 화면 동일 표시(`formatReceived` 공용). 버튼 [삭제]/[등록↔등록취소] · 네온블루(#00C2FF) 테마·로고.
+- ✅ **아이덴티티 통일** → `sooryong.byun@gmail.com`(앱 상수·UI 문구·git author·캘린더 계정·피드백 수신).
+- ✅ **r19 도구 일습 완성**(아래 §2) — ingest_feedback / anonymize / assemble_train --anonymize.
 
-### r16 성적 (real_golden 43, 공정 메트릭)
-| recall | specificity | title(TP) | **time(TP)** | loc(TP) | final |
-|---|---|---|---|---|---|
-| 1.000 | 0.571 | 0.882 | **0.909** | 0.768 | 0.827 |
-- r15 대비: time 0.81→**0.91**, loc 0.61→0.77, recall 0.955→**1.0**(놓침 0). **단 specificity 0.62→0.57**(과발화 8→9) — precision이 유일한 후퇴/잔여 약점.
+### r18 성적 (real_golden 43)
+| recall | specificity | time(TP) | final |
+|---|---|---|---|
+| ~1.0(놓침 0) | **~0.71(잔여 약점)** | ~0.93 | **0.871** |
+- detection recall·time은 포화. **남은 점수 손실은 거의 전부 과발화(specificity)** — 합성 음성은 r13~r16 내내 부었어도 정체(diminishing returns). → r19는 **실피드백**이 레버.
 
 ---
 
-## 2. 당장 할 일 (다음 요청 때 이어서)
+## 2. 당장 할 일 — r19 = 실피드백 주도 (데이터 수집 중)
 
-**r16은 배포·검증 끝.** 남은 단 하나의 약점은 **과발화(precision, specificity 0.57)**. 다음 우선순위:
+**r18 배포·검증 끝.** 유일한 큰 약점은 **과발화(specificity ~0.71)**. 합성으론 정체했으니 **레버는 폰 실피드백**. → r19는 **실데이터가 충분히 모일 때까지 보류**하고, 그동안 앱을 써서 모은다. [[project_r19_real_feedback_driven]]
 
-1. **피드백 루프 가동(최우선)** — r14/r15/r16에서 합성 음성을 계속 넣었지만 과발화는 **거의 안 잡힘(diminishing returns)**. 실제 over-fire는 합성 분포와 안 맞음. 앱이 add/dismiss/edit를 학습페어로 캡처(`FeedbackExporter`, 설정에서 opt-in 전송, 임계 10건)하니 **실사용 누적 → 실 dismiss 데이터로 r17 음성 보강**이 진짜 레버. [[project_incremental_learning_feedback]]
-2. **(보조) r17 합성** — 정말 더 할 거면 r16 실패셋(`data/failures/round_latest.jsonl`, 13건 — 과발화 9가 대부분)의 **그 패턴에 더 밀착**한 음성. 단 효과 제한적 예상.
-3. **장기** — Ollama로 Q4 양자화 손실 검증(현재 MX150/Vulkan에서 출력 빈손 이슈 — CPU 강제 모드로 살릴 수 있음). [[project-hardware-constraints]]
+### 2-A. 지금 할 일: 실피드백 수집 (코딩 아님)
+앱 캡처 = `status ∈ {ADDED, AUTO_ADDED, DISMISSED} & exported=0`. 가치순:
+1. **오탐을 의식적으로 많이 거절** — 광고·업무메일·제3자·시스템알림 카드를 **메인에서 '삭제'(=무시 소프트)** 로. ★ specificity의 전부. (DISMISSED→`has_schedule:false`)
+2. **틀린 추출은 지우지 말고 '편집'으로 교정** — EDITED gold(가장 깨끗).
+3. **맞으면 '등록'** — 확정 양성.
+- ⚠ **이벤트함(전체) '삭제'는 완전삭제(행 제거)라 학습신호 소실.** 거절은 반드시 메인 카드에서. 완전삭제는 export 후 청소용.
+- 목표: export는 신규 10건↑부터. specificity를 43-eval에서 움직이려면 **무시(음성) 위주 ~40~60건**. 음성 ~40% 균형. [[feedback_boost_negative_balance]]
+
+### 2-B. 데이터 모이면: r19 실행 (도구 준비됨)
+```powershell
+# 폰 → 설정 → "학습 데이터 보내기" → JSONL을 data/feedback_raw/ 에 저장 (data/feedback_raw는 gitignore)
+python scripts/ingest_feedback.py --round r19        # export→학습페어. EDITED 절대일자→검증된 상대토큰
+                                                     #   (_common.resolve_date 역변환, 메시지 표면형 우선,
+                                                     #    미일치는 절대일자 유지+ data/feedback_raw/r19_review.jsonl)
+# assemble_train.py SOURCES(라인 ~38)에 추가:
+#   {"path": "data/processed/feedback_r19.jsonl", "kind": "keep", "real": True},
+python scripts/assemble_train.py --anonymize         # 미리보기: PII 익명화된 train 확인(음성%·건수)
+python scripts/assemble_train.py --anonymize --apply # train.jsonl 갱신(익명화 적용)
+git push origin main                                 # Kaggle clone 대상 (push 전 필수) [[feedback_push_before_cloud_training]]
+# 이후 §3 학습 → §4 배포
+```
+- **익명화**(`scripts/anonymize.py` + `--anonymize`): 실 사적 메시지를 push 전 PII 제거. message↔gold↔thread↔sender **같은 이름=같은 가명 일관 치환**, 전화·주민·카드·계좌·이메일·URL 마스킹, **날짜/시각 토큰 불가침**([[feedback_time_first_priority]]). dedup·균형은 raw로 끝낸 뒤 출력 직전에만 적용.
+- 규율: **pool=base_r16 동결**, cap 여유(축출 0), 신규 전부 `keep`, 디커플링 평가. [[project_assemble_cap_erosion]]
+
+### 2-C. 장기
+- Ollama로 Q4 양자화 손실 검증(MX150/Vulkan 출력 빈손 이슈 — CPU 강제로 살릴 수 있음). [[project_hardware_constraints]]
 
 ---
 
@@ -37,6 +61,7 @@
 
 - ⚠️ **학습 전 반드시 `git push origin main`** — 노트북이 `git reset --hard origin/main`으로 clone하므로, 푸시 안 하면 이전 라운드 데이터로 돈다(r15에서 겪음). clone 후 `grep -c gNN_ data/processed/train.jsonl`로 확인. [[feedback_push_before_cloud_training]]
 - 라운드 올릴 땐 `configs/train.yaml`의 `run_name`·`output_dir` 두 곳만 rN→rN+1. (eval_golden=`data/eval/real_golden.jsonl` 43건.)
+- ⚠️ **실피드백이 섞인 라운드(r19~)는 `assemble_train.py --anonymize`로 train.jsonl 생성** 후 push — 실 사적 메시지 PII 제거(§2-B).
 - T4 **2개** → cell이 `torchrun --nproc_per_node=2` DDP. 끝나면 **즉시 zip 다운로드**(세션 정리가 `/kaggle/working` 삭제).
 - 로컬: zip → `models/lora/rN/` 압축해제 → `merge_lora.py` → `eval_model.py` → `quantize.sh`. (merge/quant/eval은 `.venv` 로컬, 학습만 클라우드.)
 - bf16(품질) 유지. fp16(`train_colab.yaml`)은 ~5점 낮음 — Colab T4 단독일 때만 임시.
@@ -84,6 +109,6 @@
 
 ## 7. 사용자 정보
 
-- 이름: Soo (`soo@vibezent.com`). 한국어 대화 선호, 기술 용어 영어 OK.
+- 이름: Soo (`sooryong.byun@gmail.com` — 앱·git·캘린더·피드백 수신 전부 통일). 한국어 대화 선호, 기술 용어 영어 OK.
 - 머신: Windows 11, MX150 2GB VRAM (로컬=데이터/merge/quantize/검증, 학습=클라우드 GPU). Ollama 0.30.6.
 - 작업 폴더: `D:\calendar-agent`. 폰: SM-S936N(무선 adb — 가끔 끊김, 무선 디버깅 재토글).
