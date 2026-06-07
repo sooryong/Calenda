@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(::onDelete, ::onRegister, ::onEdit, deleteLabelRes = R.string.act_hide)
+    private val adapter = EventAdapter(::onDelete, ::onRegister, ::onEdit)
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
