@@ -28,24 +28,32 @@ class EventRepository(private val dao: EventDao) {
         receivedAt: String = "", modelRawJson: String? = null, threadJson: String? = null,
         baseTitle: String = "", room: String = "",
     ): Long? {
-        // 그룹 누적 병합: 같은 채널·시작·활동(baseTitle)(+같은 방)인 최근 일정이 있으면
-        // 새 카드 대신 그 일정에 참석자를 union(같은 모임에 참가자만 추가되는 카톡 패턴).
-        // baseTitle은 r19 모델이 안정 출력(동기회 등) → 그 전엔 제목이 흔들려 병합이 잘 안 잡힐 수 있음.
-        if (baseTitle.isNotBlank()) {
-            val cand = dao.findMergeable(channel, baseTitle, ev.start, System.currentTimeMillis() - MERGE_WINDOW_MS)
-            if (cand != null && roomMatches(cand.room, room)) {
-                val merged = (cand.attendees + ev.attendees).filter { it.isNotBlank() }.distinct()
-                if (merged.size > cand.attendees.size) {
-                    // 참석자 ≥3이면 제목은 활동만(이름·출처 생략) — composeTitle 규칙과 일치.
-                    val newTitle = DateResolver.composeTitle(baseTitle, merged, null, null)
-                    dao.update(cand.copy(attendees = merged, title = newTitle))
-                }
-                return null   // 병합됨 → 새 카드/알림 없음(기존 카드가 갱신됨)
+        // 번호목록 참석자를 앱이 결정론적으로 보강(0.5B가 리스트를 끝까지 못 읽음). 모델 attendees와 union.
+        val roster = DateResolver.parseRoster(raw)
+        val effAttendees = (ev.attendees + roster).filter { it.isNotBlank() }.distinct()
+        // roster가 더 채웠으면 제목 재조합(≥3이면 활동만). baseTitle 없으면 원 제목 유지.
+        val effTitle = if (roster.isNotEmpty() && baseTitle.isNotBlank())
+            DateResolver.composeTitle(baseTitle, effAttendees, null, sender)
+        else ev.title
+        val since = System.currentTimeMillis() - MERGE_WINDOW_MS
+
+        // 그룹 누적 병합 — 같은 모임에 참가자만 추가되는 카톡 패턴을 한 일정으로(+참석자 union).
+        // 1순위: 방-인지 (채널+방+시작). 제목이 메시지마다 흔들려도 한 일정으로 묶음.
+        if (room.isNotBlank()) {
+            dao.findMergeableByRoom(channel, room, ev.start, since)?.let {
+                mergeInto(it, baseTitle, effAttendees); return null
             }
         }
+        // 2순위: 방 없음/1:1 — (채널+시작+활동). 같은 활동·시작이면 합침(SMS 재수신 등도 단일화).
+        if (baseTitle.isNotBlank()) {
+            dao.findMergeable(channel, baseTitle, ev.start, since)?.let {
+                if (roomMatches(it.room, room)) { mergeInto(it, baseTitle, effAttendees); return null }
+            }
+        }
+
         val row = DetectedEvent(
-            title = ev.title, start = ev.start, end = ev.end, allDay = ev.allDay,
-            location = ev.location, attendees = ev.attendees, description = ev.description,
+            title = effTitle, start = ev.start, end = ev.end, allDay = ev.allDay,
+            location = ev.location, attendees = effAttendees, description = ev.description,
             recurrence = ev.recurrence, confidence = ev.confidence,
             channel = channel, sender = sender, rawMessage = raw,
             room = room, baseTitle = baseTitle,
@@ -55,6 +63,27 @@ class EventRepository(private val dao: EventDao) {
         )
         val id = dao.insertIgnore(row)
         return if (id >= 0) id else null
+    }
+
+    /** 병합 후보에 참석자 union + 더 충실한 활동 제목 채택 후 갱신. */
+    private suspend fun mergeInto(cand: DetectedEvent, newBase: String, newAttendees: List<String>) {
+        val merged = (cand.attendees + newAttendees).filter { it.isNotBlank() }.distinct()
+        val bestBase = pickBase(cand.baseTitle, newBase)
+        val title = DateResolver.composeTitle(bestBase, merged, null, null)  // 그룹 = 활동만
+        if (merged != cand.attendees || bestBase != cand.baseTitle || title != cand.title) {
+            dao.update(cand.copy(attendees = merged, baseTitle = bestBase, title = title))
+        }
+    }
+
+    /** 두 활동 제목 중 더 충실한 쪽. 일반어(기타 회의 등)보다 구체어를 선호. */
+    private fun pickBase(a: String, b: String): String {
+        val generic = setOf("기타 회의", "회의", "협의", "일정", "기타", "미팅", "스레드 협의", "기한 회의", "약속")
+        return when {
+            b.isBlank() -> a
+            a.isBlank() -> b
+            a in generic && b !in generic -> b
+            else -> a
+        }
     }
 
     /** 방이름 일치 판정: 둘 다 있으면 같아야 병합, 한쪽이라도 비면 차단하지 않음(SMS·1:1 호환). */

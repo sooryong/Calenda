@@ -43,6 +43,16 @@ interface EventDao {
     )
     suspend fun findMergeable(channel: String, baseTitle: String, start: String?, sinceMs: Long): DetectedEvent?
 
+    /** 방-인지 병합 후보: 같은 채널·방·시작이고 무시되지 않은 최근 건(제목 흔들려도 그룹 누적은 한 일정).
+     *  방이 있을 때만 사용 — 모델 제목(baseTitle)이 메시지마다 흔들리는 0.5B 한계를 우회. */
+    @Query(
+        "SELECT * FROM detected_events WHERE channel = :channel AND status != 'DISMISSED' " +
+            "AND room = :room AND room != '' " +
+            "AND ((:start IS NULL AND start IS NULL) OR start = :start) " +
+            "AND createdAt >= :sinceMs ORDER BY createdAt DESC LIMIT 1",
+    )
+    suspend fun findMergeableByRoom(channel: String, room: String, start: String?, sinceMs: Long): DetectedEvent?
+
     @Update
     suspend fun update(event: DetectedEvent)
 

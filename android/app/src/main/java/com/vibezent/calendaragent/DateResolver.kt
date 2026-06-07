@@ -128,6 +128,21 @@ object DateResolver {
         return digits.isNotEmpty() && digits.all { it.isDigit() } && digits.length >= 7
     }
 
+    private val ROSTER_STOP = setOf("참석", "회의", "모임", "일정", "확인", "참석자", "명단")
+
+    /** 메시지의 번호목록('1. 이름' / '1.이름 2.이름')에서 사람 이름을 추출. 그룹 참석자 누적용.
+     *  0.5B가 리스트를 끝까지 못 읽으므로(3~4명 중 2명) 앱이 결정론적으로 뽑는다. 앱 전용(미러 없음). */
+    fun parseRoster(message: String?): List<String> {
+        if (message.isNullOrBlank()) return emptyList()
+        val re = Regex("""\d{1,2}\s*[.)]\s*([가-힣]{2,5}|[A-Za-z][A-Za-z ]{1,14})""")
+        val out = ArrayList<String>()
+        for (m in re.findAll(message)) {
+            val name = m.groupValues[1].trim()
+            if (name.isNotEmpty() && name !in ROSTER_STOP && name !in out) out.add(name)
+        }
+        return out
+    }
+
     /** 캘린더 표시 제목 조합: 누구와 + 활동 + ` · 발신자(소속)`. (_common.compose_title 미러)
      *  그룹(참석자 3명↑)은 이름 접두 생략(활동만). 전화/이메일형 발신자는 출처로 안 붙임. */
     fun composeTitle(baseTitle: String?, attendees: List<String>, organizer: String?, sender: String?): String {
