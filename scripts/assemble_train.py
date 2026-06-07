@@ -87,6 +87,8 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", default="data/processed/train_assembled.jsonl")
     ap.add_argument("--apply", action="store_true", help="train.jsonl 실제 갱신")
+    ap.add_argument("--anonymize", action="store_true",
+                    help="출력 직전 PII 익명화(실 사적 메시지 push 전). 시간/날짜 토큰은 불가침.")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
@@ -153,6 +155,13 @@ def main():
     print(breakdown(final))
     evicted = len(keep) + len(pool) - len(final)
     print(f"  제거된 합성: {max(0, evicted)}건 (keep·실데이터·엣지는 보존)")
+
+    # 4) (옵션) 익명화 — dedup·균형은 raw로 끝낸 뒤 출력 직전에만 적용
+    if args.anonymize:
+        from anonymize import anonymize_record
+        final = [anonymize_record(r) for r in final]
+        anon_n = sum(1 for r in final if r.get("_anon"))
+        print(f"  익명화 적용: {anon_n}건 (전화·주민·카드·계좌·이메일·URL 마스킹 + 이름 일관 가명; 날짜/시각 불가침)")
 
     out = "data/processed/train.jsonl" if args.apply else args.out
     with open(out, "w", encoding="utf-8") as f:
