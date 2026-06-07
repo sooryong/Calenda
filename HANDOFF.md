@@ -22,36 +22,34 @@
 
 ---
 
-## 2. 당장 할 일 — r19 = 실피드백 주도 (데이터 수집 중)
+## 2. 당장 할 일 — r19 = 제목 충실도 + 그룹채팅 통합 (할루시네이션 제거)
 
-**r18 배포·검증 끝.** 유일한 큰 약점은 **과발화(specificity ~0.71)**. 합성으론 정체했으니 **레버는 폰 실피드백**. → r19는 **실데이터가 충분히 모일 때까지 보류**하고, 그동안 앱을 써서 모은다. [[project_r19_real_feedback_driven]]
+**방향 전환(2026-06-07).** 실사용에서 카톡/SMS 일정이 쓰레기로 생성됨(`docs/카톡화면.jpg`·`문자화면.jpg`·`앱화면.jpg`). 배포 r18 로컬 추론으로 **원인 진단 = 데이터 문제(0.5B 한계 아님)** 확정:
+- "6/16 동기회 참석 1.강상욱…" → title **"기타 회의"**(할루시네이션) + 4인 버전은 **2개 일정 분리 + 설명 통째 창작**. SMS는 "인터넷" 누락 + 무시간 00:00 + 전화번호 제목 부착.
+- 능력 프로브: 동창회/회식/등산은 **정확 추출**, 오직 "동기회 참석"만 "기타 회의"로 창작 → 활동명사 복사 능력은 있음, **"동기회" 어휘 희소 + "참석"→"회의" 연상이 데이터 문제**. [[project_r19_real_feedback_driven]]
 
-### 2-A. 지금 할 일: 실피드백 수집 (코딩 아님)
-앱 캡처 = `status ∈ {ADDED, AUTO_ADDED, DISMISSED} & exported=0`. 가치순:
-1. **오탐을 의식적으로 많이 거절** — 광고·업무메일·제3자·시스템알림 카드를 **메인에서 '삭제'(=무시 소프트)** 로. ★ specificity의 전부. (DISMISSED→`has_schedule:false`)
-2. **틀린 추출은 지우지 말고 '편집'으로 교정** — EDITED gold(가장 깨끗).
-3. **맞으면 '등록'** — 확정 양성.
-- ⚠ **이벤트함(전체) '삭제'는 완전삭제(행 제거)라 학습신호 소실.** 거절은 반드시 메인 카드에서. 완전삭제는 export 후 청소용.
-- 목표: export는 신규 10건↑부터. specificity를 43-eval에서 움직이려면 **무시(음성) 위주 ~40~60건**. 음성 ~40% 균형. [[feedback_boost_negative_balance]]
+### 2-A. 데이터 (주 레버, **착수함**) — `scripts/build_r19_hardcases.py`
+1. **informal 모임 title-faithful 양성** — 동기회·동창회·회식·번개·송년회·워크샵·스터디·등산·MT… gold `title`=메시지 활동구 **그대로**(일반어 "회의/협의" 창작 금지). 특히 `동기회+참석` 계열 집중.
+2. **번호목록 참석자 + 그룹 누적 멀티턴** — `thread_context`로 번호목록이 늘어나는 대화. 각 메시지 gold = **같은 title("동기회")·같은 date**, attendees=목록 전체. (멀티턴 '확인'→'누적' 확장.)
+3. **모임테마 하드네거티브** — "동기회 회비 입금 안내"·"지난 동창회 사진"·광고 등 = `has_schedule:false`(과발화 방지, [[feedback_boost_negative_balance]]).
+4. **무시간→`time:null` 종일** — 00:00 부착 버그 교정.
+- 직접생성·로컬검증([[feedback_direct_data_gen_over_paid]]). assemble: pool=base_r16 동결, keep 추가, --apply→push. [[project_assemble_cap_erosion]]
 
-### 2-B. 데이터 모이면: r19 실행 (도구 준비됨)
-```powershell
-# 폰 → 설정 → "학습 데이터 보내기" → JSONL을 data/feedback_raw/ 에 저장 (data/feedback_raw는 gitignore)
-python scripts/ingest_feedback.py --round r19        # export→학습페어. EDITED 절대일자→검증된 상대토큰
-                                                     #   (_common.resolve_date 역변환, 메시지 표면형 우선,
-                                                     #    미일치는 절대일자 유지+ data/feedback_raw/r19_review.jsonl)
-# assemble_train.py SOURCES(라인 ~38)에 추가:
-#   {"path": "data/processed/feedback_r19.jsonl", "kind": "keep", "real": True},
-python scripts/assemble_train.py --anonymize         # 미리보기: PII 익명화된 train 확인(음성%·건수)
-python scripts/assemble_train.py --anonymize --apply # train.jsonl 갱신(익명화 적용)
-git push origin main                                 # Kaggle clone 대상 (push 전 필수) [[feedback_push_before_cloud_training]]
-# 이후 §3 학습 → §4 배포
-```
-- **익명화**(`scripts/anonymize.py` + `--anonymize`): 실 사적 메시지를 push 전 PII 제거. message↔gold↔thread↔sender **같은 이름=같은 가명 일관 치환**, 전화·주민·카드·계좌·이메일·URL 마스킹, **날짜/시각 토큰 불가침**([[feedback_time_first_priority]]). dedup·균형은 raw로 끝낸 뒤 출력 직전에만 적용.
-- 규율: **pool=base_r16 동결**, cap 여유(축출 0), 신규 전부 `keep`, 디커플링 평가. [[project_assemble_cap_erosion]]
+### 2-B. 앱 / resolver (데이터와 병행)
+- **룸-인지 병합**(`EventRepository`) — `(채널+대화방+date+정규화title)` 키 → 기존 일정에 **attendees union**, 새 카드 대신 병합. 카톡 방이름 캡처 필요(NotificationListener).
+- **`compose_title` 정리** — 전화/이메일형 발신자 제목 부착 금지("· 01038139885" 제거), 참석자≥3이면 제목=활동만.
+- 무시간 종일 처리 확인. (월-일 명시 "6/16" date 토큰 resolver 지원 검토 — 현재 미지원, 임시 절대ISO.)
 
-### 2-C. 장기
-- Ollama로 Q4 양자화 손실 검증(MX150/Vulkan 출력 빈손 이슈 — CPU 강제로 살릴 수 있음). [[project_hardware_constraints]]
+### 2-C. 평가
+- `real_golden`에 동기회 누적(3·4인)·실업 task·informal 모임 추가 → **제목 충실도**를 디커플링 지표로 명시, 사용성 게이트로 격상.
+
+### 2-D. 실피드백 수집 (병행, 흡수됨)
+이 실패들이 곧 피드백 데이터. 앱 캡처(`FeedbackExporter`, 무시/편집 위주)는 계속 유효 — 모이면 `ingest_feedback.py`→`assemble_train --anonymize`로 합류. 도구 준비됨(§아래).
+
+### 2-E. 장기
+- Ollama Q4 양자화 손실 검증(MX150/Vulkan 출력 빈손 — CPU 강제). [[project_hardware_constraints]]
+
+> **도구(준비됨):** `ingest_feedback.py`(export→pairs, EDITED 절대일자→검증 상대토큰) / `anonymize.py`+`assemble_train --anonymize`(PII 스크럽, message↔gold↔thread↔sender 일관 가명, 시간토큰 불가침). `data/feedback_raw/` gitignore.
 
 ---
 

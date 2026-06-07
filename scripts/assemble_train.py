@@ -35,7 +35,8 @@ SOURCES = [
     {"path": "data/processed/r16_hardcases.jsonl",     "kind": "keep", "real": False},  # r16: precision 밀착음성 + time/date(N일·요일·date-only·경쟁날짜·멀티턴) (r15 디커플링 분석)
     # r17_hardcases 제외: 과트리거 음성이 r16 대비 회귀시킴. r18은 r16 + N일 종일 양성만.
     {"path": "data/processed/r18_hardcases.jsonl",     "kind": "keep", "real": False},  # r18: 단독 N일 종일(time=null) 양성만(회귀 없이 공백만 닫기)
-    # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가
+    {"path": "data/processed/r19_hardcases.jsonl",     "kind": "keep", "real": False},  # r19: informal 모임 제목충실 + 번호목록 누적 멀티턴(단일일정·참석자union) + 모임테마 음성 (할루시네이션 교정)
+    # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가 (scripts/ingest_feedback.py)
 
 ]
 
