@@ -37,6 +37,7 @@ data/raw/*.jsonl
 data/raw/*.json
 data/processed/*.jsonl
 data/failures/*.jsonl
+data/feedback_raw/        # 폰 피드백 원본 export(실 사적 메시지) — 절대 커밋 금지
 !data/**/.gitkeep
 
 # 평가 골든셋은 형상관리 대상이지만 파일이 크면 LFS 고려
