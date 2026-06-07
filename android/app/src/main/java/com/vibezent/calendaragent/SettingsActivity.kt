@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * 설정: 자동 등록 토글·신뢰도 임계값·채널 토글·백그라운드 상주 + 학습 데이터 보내기.
- * 학습 데이터: 신규(미전송) 누적이 임계(10) 이상일 때만 전송 가능. 동의 후 soo@vibezent.com으로 공유 전송.
+ * 학습 데이터: 신규(미전송) 누적이 임계(10) 이상일 때만 전송 가능. 동의 후 sooryong.byun@gmail.com으로 공유 전송.
  * Gmail은 별도 로그인 없이 알림 접근으로 수집.
  */
 class SettingsActivity : AppCompatActivity() {
@@ -170,6 +170,6 @@ class SettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val EXPORT_THRESHOLD = 10
-        private const val COLLECT_EMAIL = "soo@vibezent.com"
+        private const val COLLECT_EMAIL = "sooryong.byun@gmail.com"
     }
 }
