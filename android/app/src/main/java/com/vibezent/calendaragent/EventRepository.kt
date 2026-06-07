@@ -32,7 +32,7 @@ class EventRepository(private val dao: EventDao) {
             location = ev.location, attendees = ev.attendees, description = ev.description,
             recurrence = ev.recurrence, confidence = ev.confidence,
             channel = channel, sender = sender, rawMessage = raw,
-            status = status, dedupeKey = dedupeKey(channel, ev),
+            status = status, dedupeKey = dedupeKey(channel, ev, receivedAt),
             createdAt = System.currentTimeMillis(),
             receivedAt = receivedAt, modelRawJson = modelRawJson, threadJson = threadJson,
         )
@@ -59,8 +59,9 @@ class EventRepository(private val dao: EventDao) {
     companion object {
         fun from(ctx: Context): EventRepository = EventRepository(AppDatabase.get(ctx).eventDao())
 
-        /** 같은 채널·시작시각·제목이면 동일 일정으로 간주(중복 알림/재추출 억제). */
-        fun dedupeKey(channel: String, ev: CalendarEvent): String =
-            "$channel|${ev.start ?: ""}|${ev.title.trim()}"
+        /** 같은 채널·수신시각·시작시각·제목이면 동일 건으로 간주. receivedAt 포함 →
+         *  다른 시각에 또 받은 같은 메시지는 별개 이벤트로 검출(알림 재게시는 동일 postTime이라 계속 억제). */
+        fun dedupeKey(channel: String, ev: CalendarEvent, receivedAt: String): String =
+            "$channel|$receivedAt|${ev.start ?: ""}|${ev.title.trim()}"
     }
 }

@@ -22,6 +22,7 @@ data class IncomingMessage(
  */
 object ConversationBuffer {
     private const val WINDOW_MS = 30 * 60 * 1000L   // 30분 넘은 메시지는 다른 대화로 간주
+    private const val DUP_WINDOW_MS = 10 * 1000L    // 동일 본문 '재게시' 판정 창(이 안이면 중복, 넘으면 재수신=별건)
     private const val MAX_PER_CONV = 6              // 대화당 보관 상한
     private const val CONTEXT_MAX = 5               // <대화내역>에 넣을 직전 메시지 수
 
@@ -33,8 +34,11 @@ object ConversationBuffer {
         val dq = map.getOrPut(msg.conversationKey) { ArrayDeque() }
         // 시간창 밖(오래된) 메시지 제거
         while (dq.isNotEmpty() && msg.timeMillis - dq.first().timeMillis > WINDOW_MS) dq.removeFirst()
-        // 동일 본문 연속 중복(알림 재게시 등) 방지
-        if (dq.isNotEmpty() && dq.last().body == msg.body && dq.last().sender == msg.sender) return false
+        // 동일 본문 '연속 + 짧은 시간 내' 중복(알림 재게시 등)만 무시.
+        // 다른 시각에 또 받은 같은 문자는 별개 수신이므로 통과시킨다.
+        val last = dq.lastOrNull()
+        if (last != null && last.body == msg.body && last.sender == msg.sender &&
+            msg.timeMillis - last.timeMillis < DUP_WINDOW_MS) return false
         dq.addLast(msg)
         while (dq.size > MAX_PER_CONV) dq.removeFirst()
         return true

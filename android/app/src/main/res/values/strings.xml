@@ -99,7 +99,7 @@
     <string name="auto_add_label">고신뢰도 일정 자동 등록</string>
     <string name="auto_add_desc">신뢰도가 임계값 이상이면 확인 없이 캘린더에 등록(되돌리기 가능)</string>
     <string name="threshold_label">자동 등록 임계값: %1$d%%</string>
-    <string name="strict_register_label">엄격한 자동 등록 (제목·시간 명확할 때만)</string>
+    <string name="strict_register_label">엄격한 자동 등록</string>
     <string name="strict_register_desc">제목과 시간이 모두 있을 때만 자동 등록하고, 없으면 예비로 보류합니다(오탐 감소). 장소는 없어도 등록되며, ‘누구’는 발신자가 있으니 충족된 것으로 봅니다. 보류된 일정도 카드에서 한 번 탭하면 등록됩니다.</string>
     <string name="calendar_select">저장할 캘린더 선택</string>
     <string name="calendar_current_fmt">저장할 캘린더: %1$s</string>
