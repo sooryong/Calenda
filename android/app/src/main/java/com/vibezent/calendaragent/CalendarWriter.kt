@@ -162,10 +162,8 @@ object CalendarWriter {
     }
 
     private fun buildDescription(event: CalendarEvent): String? {
-        val parts = mutableListOf<String>()
-        event.description?.let { parts.add(it) }
-        if (event.attendees.isNotEmpty()) parts.add("참석자: " + event.attendees.joinToString(", "))
-        return if (parts.isEmpty()) null else parts.joinToString("\n")
+        // 참석자는 캘린더에 넣지 않는다(사용자 운영방식 — 일정의 핵심은 활동·시간이지 참석자가 아님).
+        return event.description?.takeIf { it.isNotBlank() }
     }
 
     /** 'YYYY-MM-DD'(또는 ...T...의 날짜부) → 그 날짜의 UTC 자정 epoch millis. 종일 일정용. */

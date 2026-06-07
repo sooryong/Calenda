@@ -8,7 +8,8 @@
     <string name="model_version_fmt">버전: %1$s · 업로드: %2$s</string>
     <string name="model_version_unknown">버전 미상</string>
     <!-- 설정 화면 섹션 제목 (디버그 화면의 번호 붙은 title_model과 별개) -->
-    <string name="section_model">모델</string>
+    <string name="section_model">온디바이스 AI</string>
+    <string name="model_purpose">문자·카톡·메일을 분석해 일정을 추출합니다. 폰에서 직접 동작(서버 전송 없음).</string>
     <string name="section_autoadd">자동 등록</string>
     <string name="load_model">모델 로드</string>
     <string name="reload_model">모델 재로드</string>
@@ -101,6 +102,7 @@
     <string name="threshold_label">자동 등록 임계값: %1$d%%</string>
     <string name="strict_register_label">엄격한 자동 등록</string>
     <string name="strict_register_desc">제목과 시간이 모두 있을 때만 자동 등록하고, 없으면 예비로 보류합니다(오탐 감소). 장소는 없어도 등록되며, ‘누구’는 발신자가 있으니 충족된 것으로 봅니다. 보류된 일정도 카드에서 한 번 탭하면 등록됩니다.</string>
+    <string name="section_calendar">Google 캘린더</string>
     <string name="calendar_select">저장할 캘린더 선택</string>
     <string name="calendar_current_fmt">저장할 캘린더: %1$s</string>
     <string name="calendar_desc">자동 등록된 일정이 저장될 Google 캘린더. 폰에 로그인된 캘린더 중에서 선택합니다.</string>

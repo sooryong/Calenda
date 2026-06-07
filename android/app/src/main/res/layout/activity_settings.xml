@@ -19,15 +19,55 @@
             android:textSize="20sp"
             android:layout_marginBottom="12dp" />
 
-        <!-- 모델 -->
+        <!-- Google 캘린더 (앱의 핵심: 일정 등록 대상) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:text="@string/section_calendar"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
+
+        <Button
+            android:id="@+id/calendarButton"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="start|center_vertical"
+            android:text="@string/calendar_select" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/calendar_desc"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <!-- 모델 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="@string/section_model"
             android:textStyle="bold"
             android:textSize="16sp"
             android:textColor="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/model_purpose"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
 
         <TextView
             android:id="@+id/modelInfo"
@@ -91,23 +131,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/strict_register_desc"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
-
-        <!-- 저장할 캘린더 -->
-        <Button
-            android:id="@+id/calendarButton"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="start|center_vertical"
-            android:text="@string/calendar_select" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/calendar_desc"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 

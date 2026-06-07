@@ -41,13 +41,13 @@ class EventRepository(private val dao: EventDao) {
         // 1순위: 방-인지 (채널+방+시작). 제목이 메시지마다 흔들려도 한 일정으로 묶음.
         if (room.isNotBlank()) {
             dao.findMergeableByRoom(channel, room, ev.start, since)?.let {
-                mergeInto(it, baseTitle, effAttendees); return null
+                mergeInto(it, baseTitle); return null
             }
         }
         // 2순위: 방 없음/1:1 — (채널+시작+활동). 같은 활동·시작이면 합침(SMS 재수신 등도 단일화).
         if (baseTitle.isNotBlank()) {
             dao.findMergeable(channel, baseTitle, ev.start, since)?.let {
-                if (roomMatches(it.room, room)) { mergeInto(it, baseTitle, effAttendees); return null }
+                if (roomMatches(it.room, room)) { mergeInto(it, baseTitle); return null }
             }
         }
 
@@ -65,14 +65,15 @@ class EventRepository(private val dao: EventDao) {
         return if (id >= 0) id else null
     }
 
-    /** 병합 후보에 참석자 union + 더 충실한 활동 제목 채택 후 갱신. */
-    private suspend fun mergeInto(cand: DetectedEvent, newBase: String, newAttendees: List<String>) {
-        val merged = (cand.attendees + newAttendees).filter { it.isNotBlank() }.distinct()
+    /** 같은 모임의 후속 메시지 처리. **참가자만 바뀌면 일정은 그대로 둔다**(참석자는 일정 핵심이 아님).
+     *  단, 더 충실한 활동 제목이 오면 제목만 보정한다(예: '기타 회의'→'동기회'). */
+    private suspend fun mergeInto(cand: DetectedEvent, newBase: String) {
         val bestBase = pickBase(cand.baseTitle, newBase)
-        val title = DateResolver.composeTitle(bestBase, merged, null, null)  // 그룹 = 활동만
-        if (merged != cand.attendees || bestBase != cand.baseTitle || title != cand.title) {
-            dao.update(cand.copy(attendees = merged, baseTitle = bestBase, title = title))
+        if (bestBase != cand.baseTitle && bestBase.isNotBlank()) {
+            val title = DateResolver.composeTitle(bestBase, cand.attendees, null, null)
+            dao.update(cand.copy(baseTitle = bestBase, title = title))
         }
+        // 그 외(참가자만 추가/변경, 동일 활동) → 변경 없음.
     }
 
     /** 두 활동 제목 중 더 충실한 쪽. 일반어(기타 회의 등)보다 구체어를 선호. */
