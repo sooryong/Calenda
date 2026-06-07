@@ -21,6 +21,7 @@ class EventAdapter(
     private val onDelete: (DetectedEvent) -> Unit,
     private val onRegister: (DetectedEvent) -> Unit,
     private val onEdit: (DetectedEvent) -> Unit,
+    private val deleteLabelRes: Int = R.string.act_delete,  // 메인=숨김, 이벤트함=삭제
 ) : ListAdapter<DetectedEvent, EventAdapter.VH>(DIFF) {
 
     inner class VH(val b: ItemEventBinding) : RecyclerView.ViewHolder(b.root)
@@ -50,8 +51,8 @@ class EventAdapter(
 
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
 
-        // 삭제: 항상 활성. (등록됨이면 핸들러가 캘린더 삭제까지 확인 후 수행)
-        b.btnPrimary.text = ctx.getString(R.string.act_delete)
+        // 주 버튼: 메인=숨김 / 이벤트함=삭제 (라벨은 화면이 지정, 동작은 핸들러).
+        b.btnPrimary.text = ctx.getString(deleteLabelRes)
         b.btnPrimary.setOnClickListener { onDelete(e) }
 
         // 등록 ↔ 등록 취소 토글 (등록됨이면 '등록 취소'). 실제 분기는 핸들러가 상태로 처리.

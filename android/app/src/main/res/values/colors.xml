@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_500">#FF6750A4</color>
+    <color name="purple_500">#FF8C7CD6</color>      <!-- 브랜드색: 페리윙클 보라(CLI '3 shells'). 테마 colorPrimary·로고·강조 단일 출처 -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="amber_600">#FFD08700</color>        <!-- 예비 배지 -->
     <color name="chip_zero">#4A4458</color>          <!-- 등록 0건 채널 칩(흐리게) -->
-    <color name="count_number">#FF6750A4</color>     <!-- 카운트 숫자(라이트): 진한 보라. 다크는 values-night에서 밝은 라벤더 -->
-    <color name="btn_accent">#FFE0915E</color>       <!-- 카드 버튼 글자: 클로드 테라코타 오렌지(다크·라이트 공용, 가독성↑) -->
+    <color name="count_number">#FF8C7CD6</color>     <!-- 카운트 숫자 = 브랜드 페리윙클(통일) -->
+    <color name="btn_accent">#FF8C7CD6</color>       <!-- 카드 버튼 글자 = 브랜드 페리윙클(통일) -->
 </resources>
