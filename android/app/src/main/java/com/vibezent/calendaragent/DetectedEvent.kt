@@ -35,6 +35,8 @@ data class DetectedEvent(
     val channel: String,       // kakao | sms | gmail
     val sender: String,
     val rawMessage: String,    // 원본 메시지(검토·디버깅용)
+    val room: String = "",        // 카톡 그룹 방이름(best-effort, EXTRA_CONVERSATION_TITLE). 그룹 누적 병합 보조키.
+    val baseTitle: String = "",   // 모델 원(原)제목(조합 전). 같은 활동 병합 키(예: '동기회').
     val status: EventStatus,
     val dedupeKey: String,     // 중복 억제 키 (channel|start|title 정규화)
     val createdAt: Long,

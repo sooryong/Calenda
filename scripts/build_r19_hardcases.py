@@ -35,7 +35,7 @@ def T(h, m=0, marker=None):
 # (channel, sender, message, event)
 GATHER_POS = [
     ("kakao", "동기회총무", "다음주 금요일 저녁 7시 동기회", ev("동기회", "다음주금", time=T(7, marker="저녁"))),
-    ("kakao", "강상욱", "6/16 동기회 참석", ev("동기회", "2026-06-16", all_day=True)),
+    ("kakao", "동기회", "6/20 동기회 모임", ev("동기회", "2026-06-20", all_day=True)),
     ("kakao", "김동창", "이번주 토요일 12시 동창회 모임", ev("동창회 모임", "이번주토", time=T(12))),
     ("kakao", "박팀장", "다음주 금요일 저녁 7시 팀 회식", ev("팀 회식", "다음주금", time=T(7, marker="저녁"))),
     ("kakao", "이부장", "이번주 일요일 아침 8시 북한산 등산", ev("북한산 등산", "이번주일", time=T(8, marker="아침"))),
@@ -65,7 +65,7 @@ GATHER_ALLDAY_POS = [
     ("kakao", "동기회", "다음주 토요일 동기회", ev("동기회", "다음주토", all_day=True)),
     ("kakao", "동창회", "6/22 동창회", ev("동창회", "2026-06-22", all_day=True)),
     ("kakao", "향우회", "다음주 일요일 향우회 모임", ev("향우회 모임", "다음주일", all_day=True)),
-    ("kakao", "동기", "6/16 동기회 참석합니다", ev("동기회", "2026-06-16", all_day=True)),
+    ("kakao", "동기", "6/22 동기회 참석합니다", ev("동기회", "2026-06-22", all_day=True)),
 ]
 
 # ── G3: 모임테마 하드네거티브 (has_schedule:false) ────────────────────────────
@@ -134,11 +134,11 @@ def thread_rows(prefix, title, date, names, room_msgs, *, all_day=True, time=Non
 
 def build_threads():
     rows = []
-    # T1 — 동기회 6/16 (실제 실패 케이스 미러)
-    rows += thread_rows("g19_thr_donggi", "동기회", "2026-06-16",
-                        ["강상욱", "홍미정", "정순원", "여상재"],
-                        {"base_line": "6/16 동기회 참석",
-                         "senders": ["강상욱", "홍미정", "정순원", "여상재"]})
+    # T1 — 동기회 누적(패턴 학습용. 실제 실패 케이스 '강상욱/6/16'은 golden에 두어 누수 방지).
+    rows += thread_rows("g19_thr_donggi", "동기회", "다음주토",
+                        ["김영수", "이철호", "박지훈", "최동근"],
+                        {"base_line": "다음주 토요일 동기회 참석",
+                         "senders": ["김영수", "이철호", "박지훈", "최동근"]})
     # T2 — 워크샵 다음주 목요일
     rows += thread_rows("g19_thr_works", "워크샵", "다음주목",
                         ["김민수", "이지은", "박서준"],

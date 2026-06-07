@@ -74,6 +74,8 @@ object MessagePipeline {
                 receivedAt = receivedAt,
                 modelRawJson = ext.rawJson,
                 threadJson = ScheduleExtractor.threadToJson(thread),
+                baseTitle = ext.events.first().title.trim(),   // 모델 원제목(조합 전) — 그룹 누적 병합 키
+                room = msg.room,
             )
             if (id != null) {
                 EventRouter.route(appCtx, repo, id, event, msg)

@@ -3,12 +3,13 @@ package com.vibezent.calendaragent
 /** 수집된 한 건의 수신 메시지 (카톡/문자/메일 공통). */
 data class IncomingMessage(
     val channel: String,   // "kakao" | "sms" | "gmail"
-    val sender: String,    // 발신자(또는 카톡 방/상대 이름)
+    val sender: String,    // 발신자(카톡 그룹은 개별 발신자명)
     val body: String,
     val timeMillis: Long,
+    val room: String = "", // 카톡 그룹 방이름(best-effort). 그룹 대화 묶음·누적 병합 보조.
 ) {
-    /** 같은 대화로 묶는 키. 채널+발신자(방) 기준. */
-    val conversationKey: String get() = "$channel:$sender"
+    /** 같은 대화로 묶는 키. 방이 있으면 방 기준(그룹 누적이 한 대화로 묶임), 없으면 발신자. */
+    val conversationKey: String get() = if (room.isNotBlank()) "$channel:room:$room" else "$channel:$sender"
 }
 
 /**

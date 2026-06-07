@@ -29,6 +29,10 @@ class KakaoNotificationListener : NotificationListenerService() {
         val extras = n.extras ?: return
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        // 그룹 대화 방이름(MessagingStyle): 그룹챗에서만 채워짐(1:1은 보통 비어 있음). 누적 병합 보조키.
+        val room = if (channel == "kakao")
+            extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
+        else ""
         // Gmail은 본문이 메일 제목 — 미리보기(BigText)가 있으면 더 풍부하게 사용.
         val big = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
         val body = if (channel == "gmail" && big.isNotEmpty()) big else text
@@ -37,7 +41,7 @@ class KakaoNotificationListener : NotificationListenerService() {
         val time = sbn.postTime.takeIf { it > 0 } ?: System.currentTimeMillis()
         MessagePipeline.onMessage(
             applicationContext,
-            IncomingMessage(channel = channel, sender = title, body = body, timeMillis = time),
+            IncomingMessage(channel = channel, sender = title, body = body, timeMillis = time, room = room),
         )
     }
 

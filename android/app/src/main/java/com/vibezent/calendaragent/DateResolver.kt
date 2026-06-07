@@ -120,16 +120,25 @@ object DateResolver {
         return "와"
     }
 
-    /** 캘린더 표시 제목 조합: 누구와 + 활동 + ` · 발신자(소속)`. (_common.compose_title 미러) */
+    /** 전화번호/이메일형 발신자인가(제목 출처로 부적합). (_common._is_machine_sender 미러) */
+    private fun isMachineSender(sender: String?): Boolean {
+        val s = (sender ?: "").replace("[Web발신]", "").trim()
+        if (s.contains("@")) return true
+        val digits = s.replace(Regex("[\\s\\-+()]"), "")
+        return digits.isNotEmpty() && digits.all { it.isDigit() } && digits.length >= 7
+    }
+
+    /** 캘린더 표시 제목 조합: 누구와 + 활동 + ` · 발신자(소속)`. (_common.compose_title 미러)
+     *  그룹(참석자 3명↑)은 이름 접두 생략(활동만). 전화/이메일형 발신자는 출처로 안 붙임. */
     fun composeTitle(baseTitle: String?, attendees: List<String>, organizer: String?, sender: String?): String {
         var title = (baseTitle ?: "일정").trim()
         val who = attendees.filter { it.isNotBlank() && !title.contains(it) }
-        if (who.isNotEmpty()) {
+        if (who.isNotEmpty() && who.size < 3) {
             val joined = who.joinToString(", ")
             title = "$joined${gwa(joined)} $title"
         }
         var src: String? = null
-        if (!sender.isNullOrBlank() && sender !in listOf("나", "Me", "me")) {
+        if (!sender.isNullOrBlank() && sender !in listOf("나", "Me", "me") && !isMachineSender(sender)) {
             val s = sender.replace("[Web발신]", "").trim()
             src = when {
                 !organizer.isNullOrBlank() && !s.contains(organizer) -> "$s ($organizer)"

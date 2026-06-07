@@ -9,7 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** 앱 단일 Room DB. 이벤트함 테이블 1개. */
-@Database(entities = [DetectedEvent::class], version = 3, exportSchema = false)
+@Database(entities = [DetectedEvent::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -26,10 +26,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v3→v4: room/baseTitle 추가 — 그룹 누적 병합 키(같은 방·활동을 하나의 일정으로).
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE detected_events ADD COLUMN room TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE detected_events ADD COLUMN baseTitle TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(ctx: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 ctx.applicationContext, AppDatabase::class.java, "calendar-agent.db",
-            ).addMigrations(MIGRATION_2_3)
+            ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration(dropAllTables = true)  // 그 외 비정상 케이스 백스톱
                 .build().also { INSTANCE = it }
         }

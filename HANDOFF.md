@@ -35,13 +35,13 @@
 4. **무시간→`time:null` 종일** — 00:00 부착 버그 교정.
 - 직접생성·로컬검증([[feedback_direct_data_gen_over_paid]]). assemble: pool=base_r16 동결, keep 추가, --apply→push. [[project_assemble_cap_erosion]]
 
-### 2-B. 앱 / resolver (데이터와 병행)
-- **룸-인지 병합**(`EventRepository`) — `(채널+대화방+date+정규화title)` 키 → 기존 일정에 **attendees union**, 새 카드 대신 병합. 카톡 방이름 캡처 필요(NotificationListener).
-- **`compose_title` 정리** — 전화/이메일형 발신자 제목 부착 금지("· 01038139885" 제거), 참석자≥3이면 제목=활동만.
-- 무시간 종일 처리 확인. (월-일 명시 "6/16" date 토큰 resolver 지원 검토 — 현재 미지원, 임시 절대ISO.)
+### 2-B. 앱 / resolver — **구현됨**(빌드 통과)
+- **룸-인지 병합**(`EventRepository.save`) — `(채널 + start + 모델원제목 baseTitle)` + 방이름(best-effort) 키로 `findMergeable` → 기존 일정에 **attendees union** + 제목 재조합, 새 카드 없음(null 반환). DB v3→v4(`room`·`baseTitle` 컬럼), 카톡 방이름=`EXTRA_CONVERSATION_TITLE`. ★ baseTitle은 r19 모델이 안정 출력해야 병합이 걸림(현재 모델은 제목 흔들려 미병합).
+- **`compose_title` 정리**(`_common`+`DateResolver` 미러) — 전화/이메일형 발신자 제목 부착 금지(`_is_machine_sender`), 참석자≥3이면 제목=활동만. 단위검증 8/8.
+- 미해결: 월-일 명시 "6/16" date 토큰 resolver 지원(현재 미지원, gold는 절대ISO). 병합 시 캘린더 일정 attendees 동기화(현재 DB카드만 갱신; 대개 PENDING이라 등록 시점엔 union 반영).
 
-### 2-C. 평가
-- `real_golden`에 동기회 누적(3·4인)·실업 task·informal 모임 추가 → **제목 충실도**를 디커플링 지표로 명시, 사용성 게이트로 격상.
+### 2-C. 평가 — **구현됨**
+- `real_golden` 43→**48**: 동기회 누적(3·4인, thread+번호목록, **익명화**)·실업인증 SMS(무시간 종일)·회식·송년회(held-out 제목충실). 학습(build_r19_hardcases)과 표면형 분리(누수 방지).
 
 ### 2-D. 실피드백 수집 (병행, 흡수됨)
 이 실패들이 곧 피드백 데이터. 앱 캡처(`FeedbackExporter`, 무시/편집 위주)는 계속 유효 — 모이면 `ingest_feedback.py`→`assemble_train --anonymize`로 합류. 도구 준비됨(§아래).

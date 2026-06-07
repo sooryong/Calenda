@@ -185,20 +185,31 @@ def _gwa(word: str) -> str:
     return "와"
 
 
+def _is_machine_sender(sender: str) -> bool:
+    """전화번호/이메일형 발신자인가(제목 출처로 부적합). 예: '01038139885', '0212345678', 'no-reply@x.com'."""
+    s = (sender or "").replace("[Web발신]", "").strip()
+    if "@" in s:
+        return True
+    digits = _re.sub(r"[\s\-+()]", "", s)
+    return digits.isdigit() and len(digits) >= 7
+
+
 def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None) -> str:
     """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·출처(소속)는 앱이 붙인다.
       누구와: '{참석자}와/과 {활동}'
       출처:   ' · {발신자}'  (소속 있으면 ' · {발신자} ({소속})', 기관 발신이면 ' · {기관}')
     예: 저녁식사+[민지] → '민지와 저녁식사';  주간 회의+발신 박과장 → '주간 회의 · 박과장';
-        Kickoff+발신 Sarah Lee/소속 Company → 'Kickoff · Sarah Lee (Company)';  진료+기관 서울내과 → '진료 · 서울내과'."""
+        Kickoff+발신 Sarah Lee/소속 Company → 'Kickoff · Sarah Lee (Company)';  진료+기관 서울내과 → '진료 · 서울내과'.
+    그룹(참석자 3명↑): 이름을 제목에 안 붙이고 활동만(예: '동기회'). 참석자는 캘린더 attendees로.
+    전화번호/이메일형 발신자는 출처로 안 붙임(제목 오염 방지: '실업인증 신청 · 01038139885' 같은 케이스)."""
     title = (base_title or "일정").strip()
     who = [a for a in (attendees or []) if a and a not in title]
-    if who:
+    if who and len(who) < 3:                                # 1~2명만 '누구와' 접두. 3명↑은 활동만.
         joined = ", ".join(who)
         title = f"{joined}{_gwa(joined)} {title}"
 
     src = None
-    if sender and sender not in ("나", "Me", "me"):
+    if sender and sender not in ("나", "Me", "me") and not _is_machine_sender(sender):
         s = sender.replace("[Web발신]", "").strip()         # SMS 웹발신 접두 정리
         if organizer and organizer not in s:
             src = f"{s} ({organizer})"                      # 외부 개인 + 소속

@@ -33,6 +33,16 @@ interface EventDao {
     @Query("SELECT * FROM detected_events WHERE id = :id")
     suspend fun getById(id: Long): DetectedEvent?
 
+    /** 그룹 누적 병합 후보: 같은 채널·시작·모델원제목(baseTitle)이고 무시되지 않은 최근 건.
+     *  방(room) 일치 여부는 호출측(Repository)이 추가 판정. start가 null이면 null끼리만 매칭. */
+    @Query(
+        "SELECT * FROM detected_events WHERE channel = :channel AND status != 'DISMISSED' " +
+            "AND baseTitle = :baseTitle AND baseTitle != '' " +
+            "AND ((:start IS NULL AND start IS NULL) OR start = :start) " +
+            "AND createdAt >= :sinceMs ORDER BY createdAt DESC LIMIT 1",
+    )
+    suspend fun findMergeable(channel: String, baseTitle: String, start: String?, sinceMs: Long): DetectedEvent?
+
     @Update
     suspend fun update(event: DetectedEvent)
 
