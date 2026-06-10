@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 
@@ -33,7 +34,8 @@ _PSEUDO_EN = ["Alex", "Sam", "Jordan", "Taylor", "Casey", "Morgan", "Riley", "Ja
 _ORG_HINT = re.compile(
     r"센터|은행|카드|증권|보험|병원|의원|약국|회사|공단|지원|관리|학교|학원|"
     r"국세|세무|구청|시청|동사무소|주민센터|배송|택배|쿠팡|배민|토스|페이|뱅크|"
-    r"알림|고객|상담|안내|예약|Web발신|발신|no.?reply|noreply|admin|team|notification",
+    r"알림|고객|상담|안내|예약|Web발신|발신|no.?reply|noreply|admin|team|notification|"
+    r"기상청|재난|긴급|소방|경찰|행정안전|행안|안전안내|광역시|특별시|도청|군청|CMAS",
     re.IGNORECASE,
 )
 
@@ -72,16 +74,25 @@ def _is_personal(name: str | None) -> bool:
     return False
 
 
-def _pseudo_for(name: str, mapping: dict, counters: dict) -> str:
+def _pseudo_for(name: str, mapping: dict) -> str:
+    """이름→가명. **이름 해시 기반 분산** 배정(같은 이름=항상 같은 가명, 풀 전체에 고르게).
+    ★ 과거 per-record counter 방식은 각 레코드 첫 이름을 항상 pool[0]="민준"으로 찍어
+      학습셋 43%가 "민준"이 되는 오염을 냈다(r19~r21). 해시 분산으로 교정.
+    레코드 내 서로 다른 이름의 가명 충돌은 선형 탐사로 회피(두 사람이 한 가명으로 합쳐지지 않게)."""
     if name in mapping:
         return mapping[name]
     if re.search(r"[가-힣]", name):
         pool, key = _PSEUDO_KO, "ko"
     else:
         pool, key = _PSEUDO_EN, "en"
-    i = counters.get(key, 0)
-    pseudo = pool[i] if i < len(pool) else f"{'사람' if key=='ko' else 'Person'}{i+1}"
-    counters[key] = i + 1
+    used = set(mapping.values())
+    base = int(hashlib.md5(name.encode("utf-8")).hexdigest(), 16) % len(pool)
+    for off in range(len(pool)):
+        cand = pool[(base + off) % len(pool)]
+        if cand not in used:
+            mapping[name] = cand
+            return cand
+    pseudo = f"{'사람' if key == 'ko' else 'Person'}{len(used) + 1}"  # 풀 소진(이름 수>풀 크기)
     mapping[name] = pseudo
     return pseudo
 
@@ -107,7 +118,6 @@ def anonymize_record(rec: dict) -> dict:
 
     # 1) 이름 후보 수집 → 가명 매핑(결정론적: attendees/organizer/sender/thread sender)
     name_map: dict[str, str] = {}
-    counters: dict[str, int] = {}
     cand: list[str] = []
     for ev in events:
         if isinstance(ev, dict):
@@ -119,7 +129,7 @@ def anonymize_record(rec: dict) -> dict:
             cand.append(who.replace("[Web발신]", "").strip())
     # 길이 내림차순으로 안정 배정(부분일치 방지)
     for nm in sorted(dict.fromkeys(cand), key=len, reverse=True):
-        _pseudo_for(nm, name_map, counters)
+        _pseudo_for(nm, name_map)
 
     # 2) 텍스트 필드 스크럽
     rec["message"] = _scrub_text(rec.get("message", ""), name_map)

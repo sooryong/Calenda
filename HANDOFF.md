@@ -24,18 +24,19 @@
 
 ---
 
-## 2. 당장 할 일 — r21 학습 대기 (r20 평가 끝 → precision 보강 라운드)
+## 2. 당장 할 일 — r22 학습 대기 (r21 평가 끝 → anonymizer 오염 수정이 헤드라인)
 
-**r20 평가 결과(real_golden 50): final 0.851, recall 0.964(놓침 1=g10 마감형), specificity 0.68(과발화 7).** 타깃 2건은 **둘 다 해결** — 출금 거래알림 FP 사라짐(G1 일반화), 출범식 FN 검출됨(G2; date/loc 정확, title만 "모두의 창업"으로 빗나감). **그러나 G2 부작용**으로 격식 기관메일 confident FP 4건(g15 공고·g17 자료공유·g18 회람·g19 일정확인, 신뢰도 0.86~0.97) → specificity가 r19(0.81)보다 회귀. + "민준" attendee 환각 만연(여러 TP/FP).
+**r21 평가(real_golden 50): final 0.855, recall 1.0(놓침 0), specificity 0.682(불변), time 0.926→0.889.** r21 음성 72는 **공고형(g15)만** 고침. 자료공유(g17)·회람(g18)·일정확인(g19)은 거의 verbatim 음성을 넣었는데도 **잔존**(0.5B가 ~10/형으론 못 꺾음) + 신규 산불 재난경보 FP. **진짜 발견: `--anonymize`가 학습셋을 오염시키고 있었다** — `_pseudo_for`의 per-record counter가 각 레코드 첫 이름을 항상 `_PSEUDO_KO[0]="민준"`으로 찍어 **train의 43%(784행)가 "민준"**. 모델이 실일정(친환경차 사업설명회)에도 title "민준과 카페"를 뱉음. r19~r21 전 라운드(+현 배포 r19)가 같은 오염.
 
-**r21 설계(2026-06-10) — 음성비 50% + 격식메일 음성 + grounding 컷:**
-- **① 음성비 40→50%** — 실사용 base rate≈5%인데 학습 60% 양성이라 사전확률이 과발화를 구조적으로 유발. 음성 padding 대신 **부적합 base 양성을 제거**해 50%로(더 lean·환각↓).
-- **② 격식 기관메일 음성 72** (`build_r21_hardcases.py`, `g21_govneg`) — 공고·회람·지난행사·일정확인·추후안내·정산·뉴스. G2 confident FP 직격 상쇄. ("~MM/DD까지" 마감은 양성이라 절대 제외.)
-- **③ grounding 컷** — `assemble_train.py`가 base 양성을 랜덤이 아닌 **grounding 내림차순**(gold 필드가 message에 근거하는 비율)으로 컷. 보존 433 평균 1.00 / 제거 364 평균 0.60 = 환각 연료부터 제거.
+**r22 설계(2026-06-10) — 3대 수정:**
+- **① 🔴 anonymizer "민준" 오염 수정** (`anonymize.py`) — per-record counter → **이름 해시 분산**(같은 이름=같은 가명, 충돌은 선형탐사). 검증: 민준 784→**2행**, attendee 45개 이름 고르게. + `_ORG_HINT`에 공공기관 키워드(기상청·재난·행안 등) 보강 → 재난경보 발신자 가명화 방지.
+- **② 보일러플레이트 description null** (`assemble_train.normalize_gold`) — base/thread/cowork에 박힌 "스레드 협의 확정" 295행을 일괄 null화(모델이 그대로 외워 환각). 검증: 295→**0**.
+- **③ 잔존 confident FP 음성 강화** (`build_r22_hardcases.py`, 57건) — 자료공유·회람·일정확인 ~10→~25/형(볼륨 돌파) + 재난경보(#CMAS#·기상청) 음성 12.
+- **유지:** 음성비 50% + grounding 컷(r21에서 무해·recall 1.0 확인).
 
-**r21 상태(학습만 남음):** `train.jsonl` **1820건**(910 pos / 910 neg = **음성 50%**, +g21 음성 72, --anonymize 적용), `real_golden` 50건 유지, `configs/train.yaml` r21, assemble SOURCES에 r21_hardcases(keep).
-→ **다음 액션: `git push origin main` 후 Kaggle 노트북으로 r21 학습** → merge/quant/eval → 배포(§3·§4). [[feedback_push_before_cloud_training]]
-→ ⚠️ **감시 지표: recall·time_match.** base 양성 −364는 큰 토대 컷 → recall<0.93 또는 time<0.90이면 음성 47%로 후퇴([[project_assemble_cap_erosion]]). g10 마감형 미탐·"민준" 환각은 r22 후보(딥 양성 보강·전역 이름 다양화).
+**r22 상태(학습만 남음):** `train.jsonl` **1940건**(971 pos / 969 neg = **50%**, +g22 음성 57, --anonymize[수정판] 적용), `real_golden` 50건 유지, `configs/train.yaml` r22, assemble SOURCES에 r22_hardcases(keep).
+→ **다음 액션: `git push origin main` 후 Kaggle 노트북으로 r22 학습** → merge/quant/eval → 배포(§3·§4). [[feedback_push_before_cloud_training]]
+→ **관전 포인트:** ① 오염 제거로 **title/attendee/loc·time 대폭 회복** 기대(r21 title_avg 0.810). ② g17/g18/g19가 25/형으로도 안 죽으면 **0.5B 천장 인정**(앱 측 격식메일 발신자 휴리스틱으로 우회 검토). g10 마감형 양성은 r23 후보.
 
 **Gmail 풀바디 API(스캐폴딩됨, 빌드/Cloud 남음):** `android/GMAIL_API.md` 참조. 코드(GmailApiClient·GmailSyncWorker·Settings 버튼·SettingsStore·deps·INTERNET) 다 들어감. **사용자 할 일**: ① Google Cloud OAuth 클라이언트(Android, pkg `com.calendaragent` + 디버그 SHA-1) + 동의화면 gmail.readonly + 테스트 사용자, 게시="테스트". ② Studio Gradle Sync 후 빌드(이 환경에서 컴파일 미검증). ③ 본문중간-일정 메일로 검증.
 

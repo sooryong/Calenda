@@ -39,6 +39,7 @@ SOURCES = [
     {"path": "data/processed/r19_hardcases.jsonl",     "kind": "keep", "real": False},  # r19: informal 모임 제목충실 + 번호목록 누적 멀티턴(단일일정·참석자union) + 모임테마 음성 (할루시네이션 교정)
     {"path": "data/processed/r20_hardcases.jsonl",     "kind": "keep", "real": False},  # r20: 가맹점-장소형 거래알림 음성(출금 FP) + 격식 기관메일 선택참석 양성(Gmail FN) + 격식메일 음성 (실사용 2대 실패 교정)
     {"path": "data/processed/r21_hardcases.jsonl",     "kind": "keep", "real": False},  # r21: 격식 기관메일 음성 72(공고·회람·지난행사·일정확인·추후안내·정산·뉴스) — G2 confident FP 상쇄 (r20 과발화 분석)
+    {"path": "data/processed/r22_hardcases.jsonl",     "kind": "keep", "real": False},  # r22: 잔존 confident FP 강화(자료공유·회람·일정확인 ~25/형) + 재난경보 음성 12 (r21 specificity 불변 분석)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가 (scripts/ingest_feedback.py)
 
 ]
@@ -65,6 +66,21 @@ def key(r: dict) -> str:
 
 def is_pos(r: dict) -> bool:
     return bool(r.get("gold", {}).get("has_schedule"))
+
+
+# 모델이 그대로 외워 description으로 뱉는 합성 보일러플레이트(메시지 근거 없음 → 환각).
+# base_r16/thread_confirm/cowork 전반에 박혀 있어(295건) gold에서 null화한다. 시간/날짜 불가침.
+_BOILERPLATE_DESC = ("스레드 협의 확정",)
+
+
+def normalize_gold(r: dict) -> dict:
+    """저품질 보일러플레이트 description 제거 — 모든 소스 일괄(소스 파일 비파괴)."""
+    for ev in (r.get("gold", {}).get("events") or []):
+        if isinstance(ev, dict):
+            d = ev.get("description")
+            if isinstance(d, str) and any(b in d for b in _BOILERPLATE_DESC):
+                ev["description"] = None
+    return r
 
 
 _GROUND_FIELDS = ("title", "location", "organizer")
@@ -185,6 +201,7 @@ def main():
         final = [r for r in final if id(r) not in drop]
 
     rng.shuffle(final)
+    final = [normalize_gold(r) for r in final]   # 보일러플레이트 description null화(일괄)
 
     # 3) 리포트
     print("=== 입력 ===")
