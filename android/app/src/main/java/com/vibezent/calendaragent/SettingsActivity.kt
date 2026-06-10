@@ -6,12 +6,15 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.gms.auth.api.identity.Identity
 import com.vibezent.calendaragent.databinding.ActivitySettingsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +30,19 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { SettingsStore.from(this) }
     private val repo by lazy { EventRepository.from(this) }
+
+    /** Gmail OAuth 동의 화면(PendingIntent) 결과 수신. */
+    private val gmailAuthLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        try {
+            val authResult = Identity.getAuthorizationClient(this)
+                .getAuthorizationResultFromIntent(result.data)
+            onGmailAuthorized(authResult.accessToken)
+        } catch (e: Exception) {
+            Toast.makeText(this, R.string.gmail_api_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +78,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.chKakao.setOnCheckedChangeListener { _, v -> settings.setChannelEnabled("kakao", v) }
         binding.chSms.setOnCheckedChangeListener { _, v -> settings.setChannelEnabled("sms", v) }
         binding.chGmail.setOnCheckedChangeListener { _, v -> settings.setChannelEnabled("gmail", v) }
+
+        // Gmail 풀바디 연동(opt-in)
+        binding.gmailApiButton.setOnClickListener { toggleGmailApi() }
+        refreshGmailApiButton()
 
         // 백그라운드 상주 수집
         binding.collectorSwitch.isChecked = settings.collectorEnabled
@@ -109,6 +129,49 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun pickCalendar() = CalendarPicker.show(this) { refreshCalendarButton() }
+
+    /** 버튼: 꺼져 있으면 OAuth 인가 시작, 켜져 있으면 연동 해제. */
+    private fun toggleGmailApi() {
+        if (settings.gmailApiEnabled) {
+            settings.gmailApiEnabled = false
+            GmailSyncWorker.disable(this)
+            refreshGmailApiButton()
+            Toast.makeText(this, R.string.gmail_api_off, Toast.LENGTH_SHORT).show()
+            return
+        }
+        Identity.getAuthorizationClient(this).authorize(GmailApiClient.authRequest())
+            .addOnSuccessListener { res ->
+                val pi = res.pendingIntent
+                if (res.hasResolution() && pi != null) {
+                    gmailAuthLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                } else {
+                    onGmailAuthorized(res.accessToken)   // 이미 동의됨 → 토큰 즉시
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, R.string.gmail_api_failed, Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    /** 인가 성공 → 풀바디 연동 on + 주기 폴링 등록 + 즉시 1회 동기화. */
+    private fun onGmailAuthorized(token: String?) {
+        settings.gmailApiEnabled = true
+        settings.setChannelEnabled("gmail", true)
+        GmailSyncWorker.enable(this)
+        refreshGmailApiButton()
+        Toast.makeText(this, R.string.gmail_api_ok, Toast.LENGTH_SHORT).show()
+        token?.let { t ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                try { GmailApiClient.sync(applicationContext, t) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    private fun refreshGmailApiButton() {
+        binding.gmailApiButton.setText(
+            if (settings.gmailApiEnabled) R.string.gmail_api_connected else R.string.gmail_api_connect,
+        )
+    }
 
     override fun onResume() {
         super.onResume()

@@ -45,6 +45,18 @@ class SettingsStore(ctx: Context) {
         get() = prefs.getLong(K_CALENDAR, -1L)
         set(v) = prefs.edit().putLong(K_CALENDAR, v).apply()
 
+    /** Gmail 풀바디 연동(opt-in). 사용자가 OAuth 인가를 마치면 true → WorkManager 폴링 시작.
+     *  채널 토글(channelEnabled("gmail"))과 별개: 채널=알림 캡처 on/off, 이 값=풀바디 API on/off.
+     *  풀바디가 켜지면 같은 메일을 알림에서도 보므로 dedupeKey가 중복을 막는다(둘 켜도 안전). */
+    var gmailApiEnabled: Boolean
+        get() = prefs.getBoolean(K_GMAIL_API, false)
+        set(v) = prefs.edit().putBoolean(K_GMAIL_API, v).apply()
+
+    /** 마지막으로 Gmail API에서 가져온 메일의 internalDate(ms). 이후 메일만 신규 처리(증분). 0=처음. */
+    var gmailLastSyncMillis: Long
+        get() = prefs.getLong(K_GMAIL_SYNC, 0L)
+        set(v) = prefs.edit().putLong(K_GMAIL_SYNC, v).apply()
+
     private fun keyChannel(channel: String) = "channel_$channel"
 
     companion object {
@@ -54,6 +66,8 @@ class SettingsStore(ctx: Context) {
         private const val K_COLLECTOR = "collector_enabled"
         private const val K_ONBOARDING = "onboarding_done"
         private const val K_CALENDAR = "target_calendar_id"
+        private const val K_GMAIL_API = "gmail_api_enabled"
+        private const val K_GMAIL_SYNC = "gmail_last_sync_millis"
         fun from(ctx: Context) = SettingsStore(ctx)
     }
 }

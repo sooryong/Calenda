@@ -1,0 +1,10 @@
+{
+  "n": 43,
+  "json_valid_rate": 1.0,
+  "has_schedule_acc": 0.7209302325581395,
+  "title_f1_avg": 0.6469545957918051,
+  "time_match_rate": 0.5348837209302325,
+  "location_f1_avg": 0.4658112804063085,
+  "event_count_acc": 0.7209302325581395,
+  "final_score": 0.7445513677269892
+}

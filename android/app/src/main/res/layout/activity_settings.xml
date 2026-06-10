@@ -176,6 +176,23 @@
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 
+        <!-- Gmail 풀바디 연동(opt-in): 알림 미리보기에 안 잡히는 묻힌 일정까지 본문 전체로 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gmailApiButton"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/gmail_api_connect" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/gmail_api_desc"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
         <!-- 백그라운드 수집 -->
         <View
             android:layout_width="match_parent"

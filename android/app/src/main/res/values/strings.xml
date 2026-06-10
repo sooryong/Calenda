@@ -113,6 +113,12 @@
     <string name="ch_sms">문자(SMS)</string>
     <string name="ch_gmail">Gmail</string>
     <string name="gmail_via_notif">Gmail은 알림 접근 권한으로 수집됩니다 (별도 로그인 불필요).</string>
+    <string name="gmail_api_connect">Gmail 본문 전체 연동 (로그인)</string>
+    <string name="gmail_api_connected">Gmail 본문 연동됨 · 끄기</string>
+    <string name="gmail_api_desc">알림 미리보기에 안 잡히는 묻힌 일정까지 본문 전체로 읽습니다. Gmail 읽기 권한(읽기 전용) 동의가 필요합니다.</string>
+    <string name="gmail_api_ok">Gmail 본문 연동을 시작합니다.</string>
+    <string name="gmail_api_failed">Gmail 인가에 실패했습니다. 다시 시도해 주세요.</string>
+    <string name="gmail_api_off">Gmail 본문 연동을 껐습니다.</string>
 
     <string name="collector_section">백그라운드 수집</string>
     <string name="collector_label">자동 수집 상주 (포그라운드 서비스)</string>

@@ -80,4 +80,11 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+
+    // Gmail 풀바디 연동(opt-in): OAuth gmail.readonly 인가 → REST로 본문 전체 수집.
+    //   알림 캡처(미리보기 잘림)로 못 보던 묻힌 일정을 잡기 위함. 폴링은 WorkManager.
+    //   ※ google-api-services-gmail(무거운 구버전 http클라)는 안 씀 — AuthorizationClient(토큰) + OkHttp(REST) + org.json만.
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }
