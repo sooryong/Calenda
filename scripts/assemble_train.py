@@ -36,6 +36,7 @@ SOURCES = [
     # r17_hardcases 제외: 과트리거 음성이 r16 대비 회귀시킴. r18은 r16 + N일 종일 양성만.
     {"path": "data/processed/r18_hardcases.jsonl",     "kind": "keep", "real": False},  # r18: 단독 N일 종일(time=null) 양성만(회귀 없이 공백만 닫기)
     {"path": "data/processed/r19_hardcases.jsonl",     "kind": "keep", "real": False},  # r19: informal 모임 제목충실 + 번호목록 누적 멀티턴(단일일정·참석자union) + 모임테마 음성 (할루시네이션 교정)
+    {"path": "data/processed/r20_hardcases.jsonl",     "kind": "keep", "real": False},  # r20: 가맹점-장소형 거래알림 음성(출금 FP) + 격식 기관메일 선택참석 양성(Gmail FN) + 격식메일 음성 (실사용 2대 실패 교정)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가 (scripts/ingest_feedback.py)
 
 ]

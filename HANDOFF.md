@@ -24,9 +24,22 @@
 
 ---
 
-## 2. 당장 할 일 — r19 배포 완료, **실사용 테스트 중** (2026-06-07 이후)
+## 2. 당장 할 일 — r20 학습 대기 + Gmail 풀바디 API 빌드 (2026-06-10 실패 2건 피드백)
 
-배포본 = r19 gguf + 앱(roster파싱·방병합·참석자캘린더제외·무-churn·설정재구성·온디바이스AI라벨). 사용자가 앱 열고 동기회 그룹 메시지 검출까지 확인함. **개발 일시 중단 → 실사용 관찰 단계.**
+실사용 실패 2건 접수 → 고침:
+- **① 과발화**: "출금 6,000원 · 카카오뱅크"(가맹점=경북대생협) @93% 등록. 기존 거래알림 음성이 계좌포맷뿐이라 **장소형 가맹점** 카드결제를 못 걸렀음. → `build_r20_hardcases.py` G1(가맹점-장소형 거래알림 음성 20)로 직격.
+- **② 미탐**: 격식 Gmail "6월 16일(화) … 출범식" 미검출. 진짜 원인=**알림 미리보기 잘림**(일정이 본문 3문단째 → 모델에 도달 못 함). 데이터로는 그 메일 자체는 못 고침. → 사용자 결정: **Gmail 풀바디 API 착수**. + 모델 보강 G2(격식 기관메일 선택참석 양성 12) + ③ 월-일 토큰 resolver.
+
+**r20 상태(학습만 남음):** `train.jsonl` 2100건(+g20 40, --anonymize 적용), `real_golden` **50건**(+출금 음성·출범식 양성 held-out), `configs/train.yaml` r20, assemble SOURCES에 r20_hardcases. resolver 월-일 토큰(`6월16일`/`6/16`) 양쪽(_common/DateResolver) 추가+단위검증 10/10.
+→ **다음 액션: `git push origin main` 후 Kaggle 노트북으로 r20 학습** → merge/quant/eval → 배포(§3·§4). [[feedback_push_before_cloud_training]]
+
+**Gmail 풀바디 API(스캐폴딩됨, 빌드/Cloud 남음):** `android/GMAIL_API.md` 참조. 코드(GmailApiClient·GmailSyncWorker·Settings 버튼·SettingsStore·deps·INTERNET) 다 들어감. **사용자 할 일**: ① Google Cloud OAuth 클라이언트(Android, pkg `com.calendaragent` + 디버그 SHA-1) + 동의화면 gmail.readonly + 테스트 사용자, 게시="테스트". ② Studio Gradle Sync 후 빌드(이 환경에서 컴파일 미검증). ③ 본문중간-일정 메일로 검증.
+
+---
+
+### (이전) r19 배포 완료, 실사용 테스트 중 (2026-06-07)
+
+배포본 = r19 gguf + 앱(roster파싱·방병합·참석자캘린더제외·무-churn·설정재구성·온디바이스AI라벨). 사용자가 앱 열고 동기회 그룹 메시지 검출까지 확인함.
 
 **실사용에서 관찰할 것**(다음 세션에 결과 받아 이어감):
 1. **그룹 누적 = 한 일정인가** — 동기회처럼 번호목록 늘어나는 카톡에서 카드가 하나로 묶이나, 아니면 여러 개 생기나. (제목 "동기회" 유지? 참가자 바뀌어도 일정 안 흔들리나?)
