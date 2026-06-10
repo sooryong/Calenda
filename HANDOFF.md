@@ -24,14 +24,18 @@
 
 ---
 
-## 2. 당장 할 일 — r20 학습 대기 + Gmail 풀바디 API 빌드 (2026-06-10 실패 2건 피드백)
+## 2. 당장 할 일 — r21 학습 대기 (r20 평가 끝 → precision 보강 라운드)
 
-실사용 실패 2건 접수 → 고침:
-- **① 과발화**: "출금 6,000원 · 카카오뱅크"(가맹점=경북대생협) @93% 등록. 기존 거래알림 음성이 계좌포맷뿐이라 **장소형 가맹점** 카드결제를 못 걸렀음. → `build_r20_hardcases.py` G1(가맹점-장소형 거래알림 음성 20)로 직격.
-- **② 미탐**: 격식 Gmail "6월 16일(화) … 출범식" 미검출. 진짜 원인=**알림 미리보기 잘림**(일정이 본문 3문단째 → 모델에 도달 못 함). 데이터로는 그 메일 자체는 못 고침. → 사용자 결정: **Gmail 풀바디 API 착수**. + 모델 보강 G2(격식 기관메일 선택참석 양성 12) + ③ 월-일 토큰 resolver.
+**r20 평가 결과(real_golden 50): final 0.851, recall 0.964(놓침 1=g10 마감형), specificity 0.68(과발화 7).** 타깃 2건은 **둘 다 해결** — 출금 거래알림 FP 사라짐(G1 일반화), 출범식 FN 검출됨(G2; date/loc 정확, title만 "모두의 창업"으로 빗나감). **그러나 G2 부작용**으로 격식 기관메일 confident FP 4건(g15 공고·g17 자료공유·g18 회람·g19 일정확인, 신뢰도 0.86~0.97) → specificity가 r19(0.81)보다 회귀. + "민준" attendee 환각 만연(여러 TP/FP).
 
-**r20 상태(학습만 남음):** `train.jsonl` 2100건(+g20 40, --anonymize 적용), `real_golden` **50건**(+출금 음성·출범식 양성 held-out), `configs/train.yaml` r20, assemble SOURCES에 r20_hardcases. resolver 월-일 토큰(`6월16일`/`6/16`) 양쪽(_common/DateResolver) 추가+단위검증 10/10.
-→ **다음 액션: `git push origin main` 후 Kaggle 노트북으로 r20 학습** → merge/quant/eval → 배포(§3·§4). [[feedback_push_before_cloud_training]]
+**r21 설계(2026-06-10) — 음성비 50% + 격식메일 음성 + grounding 컷:**
+- **① 음성비 40→50%** — 실사용 base rate≈5%인데 학습 60% 양성이라 사전확률이 과발화를 구조적으로 유발. 음성 padding 대신 **부적합 base 양성을 제거**해 50%로(더 lean·환각↓).
+- **② 격식 기관메일 음성 72** (`build_r21_hardcases.py`, `g21_govneg`) — 공고·회람·지난행사·일정확인·추후안내·정산·뉴스. G2 confident FP 직격 상쇄. ("~MM/DD까지" 마감은 양성이라 절대 제외.)
+- **③ grounding 컷** — `assemble_train.py`가 base 양성을 랜덤이 아닌 **grounding 내림차순**(gold 필드가 message에 근거하는 비율)으로 컷. 보존 433 평균 1.00 / 제거 364 평균 0.60 = 환각 연료부터 제거.
+
+**r21 상태(학습만 남음):** `train.jsonl` **1820건**(910 pos / 910 neg = **음성 50%**, +g21 음성 72, --anonymize 적용), `real_golden` 50건 유지, `configs/train.yaml` r21, assemble SOURCES에 r21_hardcases(keep).
+→ **다음 액션: `git push origin main` 후 Kaggle 노트북으로 r21 학습** → merge/quant/eval → 배포(§3·§4). [[feedback_push_before_cloud_training]]
+→ ⚠️ **감시 지표: recall·time_match.** base 양성 −364는 큰 토대 컷 → recall<0.93 또는 time<0.90이면 음성 47%로 후퇴([[project_assemble_cap_erosion]]). g10 마감형 미탐·"민준" 환각은 r22 후보(딥 양성 보강·전역 이름 다양화).
 
 **Gmail 풀바디 API(스캐폴딩됨, 빌드/Cloud 남음):** `android/GMAIL_API.md` 참조. 코드(GmailApiClient·GmailSyncWorker·Settings 버튼·SettingsStore·deps·INTERNET) 다 들어감. **사용자 할 일**: ① Google Cloud OAuth 클라이언트(Android, pkg `com.calendaragent` + 디버그 SHA-1) + 동의화면 gmail.readonly + 테스트 사용자, 게시="테스트". ② Studio Gradle Sync 후 빌드(이 환경에서 컴파일 미검증). ③ 본문중간-일정 메일로 검증.
 

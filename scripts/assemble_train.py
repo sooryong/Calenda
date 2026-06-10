@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 from pathlib import Path
 
 # kind: 'keep'(항상 보존) | 'pool'(캡 맞추려 제거 가능).  real: 실데이터 여부(표시용).
@@ -37,6 +38,7 @@ SOURCES = [
     {"path": "data/processed/r18_hardcases.jsonl",     "kind": "keep", "real": False},  # r18: 단독 N일 종일(time=null) 양성만(회귀 없이 공백만 닫기)
     {"path": "data/processed/r19_hardcases.jsonl",     "kind": "keep", "real": False},  # r19: informal 모임 제목충실 + 번호목록 누적 멀티턴(단일일정·참석자union) + 모임테마 음성 (할루시네이션 교정)
     {"path": "data/processed/r20_hardcases.jsonl",     "kind": "keep", "real": False},  # r20: 가맹점-장소형 거래알림 음성(출금 FP) + 격식 기관메일 선택참석 양성(Gmail FN) + 격식메일 음성 (실사용 2대 실패 교정)
+    {"path": "data/processed/r21_hardcases.jsonl",     "kind": "keep", "real": False},  # r21: 격식 기관메일 음성 72(공고·회람·지난행사·일정확인·추후안내·정산·뉴스) — G2 confident FP 상쇄 (r20 과발화 분석)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가 (scripts/ingest_feedback.py)
 
 ]
@@ -63,6 +65,37 @@ def key(r: dict) -> str:
 
 def is_pos(r: dict) -> bool:
     return bool(r.get("gold", {}).get("has_schedule"))
+
+
+_GROUND_FIELDS = ("title", "location", "organizer")
+
+
+def grounding(r: dict) -> float:
+    """양성 gold의 추출 필드(title/location/organizer/attendees)가 message에 근거하는 비율.
+    낮을수록 '부적합' — 메시지에 없는 내용을 정답이라 학습 → 환각 연료. 캡 컷 우선순위에 사용.
+    음성·근거판정 불가(필드 없음)는 1.0(안 자름). 날짜/시각 토큰은 표면형 변환되므로 제외."""
+    g = r.get("gold", {})
+    if not g.get("has_schedule"):
+        return 1.0
+    msg = r.get("message", "") or ""
+    for t in (r.get("thread_context") or []):     # 멀티턴: 근거는 직전 메시지에 있을 수 있음
+        msg += " " + (t.get("message", "") or "")
+    msg_l = msg.lower()
+    checked = hit = 0
+    for ev in g.get("events", []):
+        for f in _GROUND_FIELDS:
+            v = ev.get(f)
+            if isinstance(v, str) and v.strip():
+                checked += 1
+                toks = [w for w in re.split(r"[\s,·/]+", v) if len(w) >= 2]
+                if v.lower() in msg_l or any(w.lower() in msg_l for w in toks):
+                    hit += 1
+        for a in (ev.get("attendees") or []):
+            if isinstance(a, str) and a.strip():
+                checked += 1
+                if a.lower() in msg_l:
+                    hit += 1
+    return hit / checked if checked else 1.0
 
 
 def breakdown(rows: list[dict]) -> str:
@@ -126,6 +159,9 @@ def main():
     pool_pos = [r for r in pool if is_pos(r)]
     pool_neg = [r for r in pool if not is_pos(r)]
     rng.shuffle(pool_pos); rng.shuffle(pool_neg)
+    # base 합성 양성: grounding 내림차순 정렬 → 잘 근거된 것 우선 보존, 부적합(환각 연료)부터 컷.
+    # 앞선 shuffle이 동점 grounding의 결정적 tie-break(seed 고정). 음성은 정렬 안 함(전량 활용).
+    pool_pos.sort(key=grounding, reverse=True)
 
     target_neg = round(cap * args.neg)
     target_pos = cap - target_neg
@@ -157,6 +193,12 @@ def main():
     print(breakdown(final))
     evicted = len(keep) + len(pool) - len(final)
     print(f"  제거된 합성: {max(0, evicted)}건 (keep·실데이터·엣지는 보존)")
+    dropped_pos = pool_pos[need_pos:]
+    if take_pos or dropped_pos:
+        avg = lambda xs: sum(xs) / len(xs) if xs else 1.0
+        print(f"  grounding 컷: 보존 base양성 {len(take_pos)}건 평균 {avg([grounding(r) for r in take_pos]):.2f}"
+              f" / 제거 {len(dropped_pos)}건 평균 {avg([grounding(r) for r in dropped_pos]):.2f}"
+              f" (낮을수록 환각 연료 — 부적합부터 컷)")
 
     # 4) (옵션) 익명화 — dedup·균형은 raw로 끝낸 뒤 출력 직전에만 적용
     if args.anonymize:
