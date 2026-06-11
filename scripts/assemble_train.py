@@ -116,6 +116,38 @@ def grounding(r: dict) -> float:
     return hit / checked if checked else 1.0
 
 
+_CUE_RE = re.compile(r"\d{1,2}\s*시|\d{1,2}\s*일|\d{1,2}/\d{1,2}|내일|모레|글피|다음\s*주|이번\s*주|오전|오후|저녁|요일")
+
+
+def difficulty(r: dict) -> float:
+    """'결정 경계까지의 거리' 추정(높을수록 경계에 가까움=학습가치 큼, 낮을수록 쉬움=잉여).
+    캡을 줄일 때 '쉬운 합성'부터 버리기 위한 점수. (grounding=환각연료, difficulty=잉여여부 — 직교.)
+    양성: 멀티턴·상대날짜토큰·표시어없는 시각·terse·장소없음 = 어려움(경계). 절대날짜+완비+단일턴 = 쉬움.
+    음성: 일정 단서(시각/날짜)가 있는데도 음성 = 어려움(과발화 위험 케이스). 단서 전무 = 쉬움(휴리스틱이 거름)."""
+    g = r.get("gold", {})
+    ev = (g.get("events") or [{}])
+    ev = ev[0] if ev else {}
+    if not g.get("has_schedule"):
+        hay = (r.get("message", "") or "") + " " + " ".join(t.get("message", "") for t in (r.get("thread_context") or []))
+        return 1.0 if _CUE_RE.search(hay) else 0.0
+    s = 0.0
+    if r.get("thread_context"):
+        s += 2.0
+    d = ev.get("date")
+    if d is None:
+        s += 1.0
+    elif isinstance(d, str) and not d[:4].isdigit() and "월" not in d:
+        s += 1.5                                   # 상대 토큰(내일·이번주금) = 어려움
+    t = ev.get("time")
+    if isinstance(t, dict) and t.get("marker") is None and (t.get("hour") or 0) in range(1, 13):
+        s += 1.0                                   # 표시어 없는 1~12시 = AM/PM 모호 = 어려움
+    if len(r.get("message", "") or "") < 20:
+        s += 1.0                                   # terse
+    if not ev.get("location"):
+        s += 0.3
+    return s
+
+
 def breakdown(rows: list[dict]) -> str:
     chans = {}
     for r in rows:
@@ -135,8 +167,8 @@ def breakdown(rows: list[dict]) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cap", type=int, default=2100)  # r18: base_r16(2000) 전량 보존 + N일 양성 추가(잠식 방지)
-    ap.add_argument("--neg", type=float, default=0.40, help="목표 음성 비율")
+    ap.add_argument("--cap", type=int, default=1800)  # r24: 경계-거리 컷으로 쉬운 합성 양성 축소(2100→1800), 음성 55%
+    ap.add_argument("--neg", type=float, default=0.55, help="목표 음성 비율 (r24: 0.40→0.55, 쉬운 양성 더 삭제해 specificity↑)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", default="data/processed/train_assembled.jsonl")
     ap.add_argument("--apply", action="store_true", help="train.jsonl 실제 갱신")
@@ -177,9 +209,13 @@ def main():
     pool_pos = [r for r in pool if is_pos(r)]
     pool_neg = [r for r in pool if not is_pos(r)]
     rng.shuffle(pool_pos); rng.shuffle(pool_neg)
-    # base 합성 양성: grounding 내림차순 정렬 → 잘 근거된 것 우선 보존, 부적합(환각 연료)부터 컷.
-    # 앞선 shuffle이 동점 grounding의 결정적 tie-break(seed 고정). 음성은 정렬 안 함(전량 활용).
-    pool_pos.sort(key=grounding, reverse=True)
+    # base 합성 컷 우선순위(둘 다 '버릴 것부터 뒤로' = 내림차순으로 정렬해 앞에서 take):
+    #  양성: ①grounding 바닥(<0.6 환각연료)은 무조건 먼저 버림 ②그 위는 difficulty(경계거리) 큰 것 보존
+    #        → '쉬운 합성 양성'(절대날짜+완비+단일턴)이 캡 축소 시 제일 먼저 빠진다.
+    #  음성: 일정 단서 있는 hard-neg(과발화 위험) 보존, 단서 없는 easy-neg부터 버림.
+    # shuffle이 동점 결정적 tie-break(seed 고정).
+    pool_pos.sort(key=lambda r: (grounding(r) >= 0.6, difficulty(r), grounding(r)), reverse=True)
+    pool_neg.sort(key=difficulty, reverse=True)
 
     target_neg = round(cap * args.neg)
     target_pos = cap - target_neg
