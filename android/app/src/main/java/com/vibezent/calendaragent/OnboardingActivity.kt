@@ -53,6 +53,7 @@ class OnboardingActivity : AppCompatActivity() {
         binding.btnCalSelect.setOnClickListener { CalendarPicker.show(this) { refresh() } }
         binding.btnSms.setOnClickListener { reqPerms.launch(arrayOf(Manifest.permission.RECEIVE_SMS)) }
         binding.btnKakao.setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+        binding.btnA11y.setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         binding.startButton.setOnClickListener {
             SettingsStore.from(this).onboardingDone = true
             finish()
@@ -72,6 +73,12 @@ class OnboardingActivity : AppCompatActivity() {
         return flat.split(":").any { it.contains(packageName) }
     }
 
+    /** 접근성 서비스(카톡 양방향 캡처)가 켜져 있는가. */
+    private fun a11yOn(): Boolean {
+        val flat = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        return flat.split(":").any { it.contains(packageName) && it.contains("KakaoAccessibilityService") }
+    }
+
     private fun refresh() {
         step(binding.stepModelLabel, binding.btnModel, getString(R.string.step_model), ModelStore.exists(this))
         step(binding.stepNotifLabel, binding.btnNotif, getString(R.string.step_notif), granted(Manifest.permission.POST_NOTIFICATIONS))
@@ -79,6 +86,7 @@ class OnboardingActivity : AppCompatActivity() {
         step(binding.stepCalSelectLabel, binding.btnCalSelect, getString(R.string.step_cal_select), SettingsStore.from(this).targetCalendarId != -1L)
         step(binding.stepSmsLabel, binding.btnSms, getString(R.string.step_sms), granted(Manifest.permission.RECEIVE_SMS))
         step(binding.stepKakaoLabel, binding.btnKakao, getString(R.string.step_kakao), listenerOn())
+        step(binding.stepA11yLabel, binding.btnA11y, getString(R.string.step_a11y), a11yOn())
     }
 
     private fun step(label: TextView, btn: Button, title: String, done: Boolean) {

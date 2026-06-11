@@ -21,6 +21,9 @@ class KakaoNotificationListener : NotificationListenerService() {
             GMAIL_PKG -> "gmail"
             else -> return
         }
+        // 하이브리드: 접근성 서비스가 켜져 있으면 카톡은 그쪽이 양방향으로 소유 → 알림 경로는 양보(이중처리 방지).
+        // 접근성이 꺼져 있으면(채팅방 닫힘 등) 종전대로 알림으로 수신만이라도 잡는다. Gmail은 항상 알림 경로.
+        if (channel == "kakao" && KakaoAccessibilityService.isActive) return
 
         val n = sbn.notification ?: return
         // 묶음 요약 알림은 개별 메시지가 아님 → 스킵

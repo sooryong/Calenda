@@ -40,6 +40,7 @@ SOURCES = [
     {"path": "data/processed/r20_hardcases.jsonl",     "kind": "keep", "real": False},  # r20: 가맹점-장소형 거래알림 음성(출금 FP) + 격식 기관메일 선택참석 양성(Gmail FN) + 격식메일 음성 (실사용 2대 실패 교정)
     {"path": "data/processed/r21_hardcases.jsonl",     "kind": "keep", "real": False},  # r21: 격식 기관메일 음성 72(공고·회람·지난행사·일정확인·추후안내·정산·뉴스) — G2 confident FP 상쇄 (r20 과발화 분석)
     {"path": "data/processed/r22_hardcases.jsonl",     "kind": "keep", "real": False},  # r22: 잔존 confident FP 강화(자료공유·회람·일정확인 ~25/형) + 재난경보 음성 12 (r21 specificity 불변 분석)
+    {"path": "data/processed/r23_hardcases.jsonl",     "kind": "keep", "real": False},  # r23: 멀티턴 '상대가 맨 「네」로 확정, 값은 내 이전 메시지'(신스키마 date토큰) + 거절/로지스틱스 음성 (박상로 카톡 실패: 다음주화/6-29 환각)
     # 다음 라운드: feedback_export 를 여기에 'keep'으로 추가 (scripts/ingest_feedback.py)
 
 ]

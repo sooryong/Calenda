@@ -44,6 +44,21 @@
             </intent-filter>
         </service>
 
+        <!-- #1b 카카오톡 양방향 캡처 (접근성). 내가 보낸 말풍선까지 읽어 협의→확정 멀티턴을 잡는다.
+             사용자가 '설치된 앱 > 접근성'에서 허용해야 동작. 패키지=카톡으로 한정. -->
+        <service
+            android:name=".KakaoAccessibilityService"
+            android:exported="false"
+            android:label="@string/a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_kakao_config" />
+        </service>
+
         <!-- #2 SMS 수신 브로드캐스트 -->
         <receiver
             android:name=".SmsReceiver"

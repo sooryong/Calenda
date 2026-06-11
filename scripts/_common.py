@@ -111,6 +111,10 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
         monday = received_date - _timedelta(days=received_date.weekday())
         monday += _timedelta(days=7 * {"이번주": 0, "다음주": 1, "다다음주": 2}[m.group(1)])
         return monday + _timedelta(days=_WD_KO.index(m.group(2)))
+    m = _re.match(r"^([월화수목금토일])요일$", token)        # 접두사 없는 맨 요일 → 다가오는 그 요일(오늘 포함)
+    if m:
+        ahead = (_WD_KO.index(m.group(1)) - received_date.weekday()) % 7
+        return received_date + _timedelta(days=ahead)
     if token in ("이번주말", "다음주말"):
         sat = received_date + _timedelta(days=(5 - received_date.weekday()) % 7)
         return sat + (_timedelta(days=7) if token == "다음주말" else _timedelta())

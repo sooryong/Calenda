@@ -145,6 +145,11 @@
     <string name="step_cal_select">저장할 캘린더</string>
     <string name="step_sms">문자(SMS) 수집</string>
     <string name="step_kakao">카카오톡·Gmail 알림 접근</string>
+    <string name="step_a11y">카카오톡 대화 읽기 (양방향)</string>
+
+    <!-- 접근성(양방향 카톡 캡처) -->
+    <string name="a11y_label">카카오톡 일정 읽기</string>
+    <string name="a11y_desc">카카오톡 대화 화면을 읽어, 내가 보낸 메시지까지 포함한 약속 협의에서 일정을 추출합니다. 카카오톡에서만 동작하며, 내용은 폰에서만 처리됩니다(서버 전송 없음).</string>
     <string name="onboarding_start">시작하기</string>
     <string name="onboarding_guide">설정 가이드</string>
     <string name="action_grant">허용</string>

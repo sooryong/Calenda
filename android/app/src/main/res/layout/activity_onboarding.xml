@@ -146,6 +146,26 @@
                 android:text="@string/action_grant" />
         </LinearLayout>
 
+        <!-- 카톡 양방향(접근성) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+            <TextView
+                android:id="@+id/stepA11yLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp" />
+            <Button
+                android:id="@+id/btnA11y"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/action_grant" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/startButton"
             android:layout_width="match_parent"

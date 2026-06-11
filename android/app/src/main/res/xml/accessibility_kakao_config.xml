@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  카카오톡 대화 화면(양방향)을 읽기 위한 접근성 서비스 설정.
+  알림 캡처는 '수신' 메시지만 보지만, 접근성은 화면에 그려진 말풍선을 읽으므로
+  '내가 보낸' 말풍선까지 관측 가능 → 협의→확정 멀티턴을 잡는다.
+  packageNames로 카톡에만 한정(다른 앱 화면은 읽지 않음). 권장 검토용 description 필수.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="300"
+    android:packageNames="com.kakao.talk"
+    android:description="@string/a11y_desc" />

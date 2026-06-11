@@ -58,6 +58,10 @@ object DateResolver {
             val monday = r.minusDays((r.dayOfWeek.value - 1).toLong()).plusWeeks(weeks)
             return monday.plusDays(WD.indexOf(it.groupValues[2]).toLong())
         }
+        Regex("^([월화수목금토일])요일$").find(t)?.let {     // 접두사 없는 맨 요일 → 다가오는 그 요일(오늘 포함)
+            val ahead = ((WD.indexOf(it.groupValues[1]) - (r.dayOfWeek.value - 1)) % 7 + 7) % 7
+            return r.plusDays(ahead.toLong())
+        }
         if (t == "이번주말" || t == "다음주말") {
             val toSat = ((6 - r.dayOfWeek.value) % 7 + 7) % 7   // 다가오는 토요일까지 일수
             val sat = r.plusDays(toSat.toLong())

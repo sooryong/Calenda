@@ -1,12 +1,14 @@
 package com.vibezent.calendaragent
 
-/** 수집된 한 건의 수신 메시지 (카톡/문자/메일 공통). */
+/** 수집된 한 건의 메시지 (카톡/문자/메일 공통). 접근성 캡처는 내 송신도 포함. */
 data class IncomingMessage(
     val channel: String,   // "kakao" | "sms" | "gmail"
-    val sender: String,    // 발신자(카톡 그룹은 개별 발신자명)
+    val sender: String,    // 발신자. 내 송신(fromMe)이면 "나"(학습 thread_context 규칙).
     val body: String,
     val timeMillis: Long,
     val room: String = "", // 카톡 그룹 방이름(best-effort). 그룹 대화 묶음·누적 병합 보조.
+    val fromMe: Boolean = false,   // 접근성 캡처에서 '내가 보낸' 말풍선이면 true.
+    val counterpart: String = "",  // 상대(방 제목). 내 송신이 트리거일 때 제목 출처로 사용.
 ) {
     /** 같은 대화로 묶는 키. 방이 있으면 방 기준(그룹 누적이 한 대화로 묶임), 없으면 발신자. */
     val conversationKey: String get() = if (room.isNotBlank()) "$channel:room:$room" else "$channel:$sender"
