@@ -88,8 +88,12 @@ object DateResolver {
                 return cand
             }
         }
-        if (Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(t)) {
-            return try { LocalDate.parse(t) } catch (e: Exception) { null }
+        // 절대일자: 구분자(- / .) · 비패딩 모두 허용 → 2026-06-11 / 2026-6-11 / 2026/6/11 / 2025.12.3(.)
+        Regex("^(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})\\.?$").find(t)?.let {
+            val y = it.groupValues[1].toInt(); val mo = it.groupValues[2].toInt(); val d = it.groupValues[3].toInt()
+            if (mo in 1..12 && d in 1..31) {
+                return LocalDate.of(y, mo, minOf(d, java.time.YearMonth.of(y, mo).lengthOfMonth()))
+            }
         }
         return null
     }

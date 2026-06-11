@@ -136,11 +136,12 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
             if cand < received_date:
                 cand = _date(y + 1, mo_, min(d_, _calendar.monthrange(y + 1, mo_)[1]))
             return cand
-    if _re.match(r"^\d{4}-\d{2}-\d{2}$", token):
-        try:
-            return _date.fromisoformat(token)
-        except Exception:
-            return None
+    # 절대일자: 구분자(- / .) · 비패딩 모두 허용 → 2026-06-11 / 2026-6-11 / 2026/6/11 / 2025.12.3(.)
+    m = _re.match(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\.?$", token)
+    if m:
+        y_, mo_, d_ = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= mo_ <= 12 and 1 <= d_ <= 31:
+            return _date(y_, mo_, min(d_, _calendar.monthrange(y_, mo_)[1]))
     return None
 
 
