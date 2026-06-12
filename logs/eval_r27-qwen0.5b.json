@@ -1,0 +1,24 @@
+{
+  "n": 50,
+  "json_valid_rate": 1.0,
+  "has_schedule_acc": 0.92,
+  "title_f1_avg": 0.8082484472049688,
+  "time_match_rate": 0.84,
+  "location_f1_avg": 0.7379310344827585,
+  "event_count_acc": 0.88,
+  "final_score": 0.8963876061969015,
+  "detection": {
+    "n_pos": 28,
+    "n_neg": 22,
+    "recall_pos": 1.0,
+    "specificity_neg": 0.8181818181818182,
+    "overfire_count": 4,
+    "missed_count": 0
+  },
+  "extraction_on_true_positives": {
+    "n": 26,
+    "title_avg": 0.8620162446249403,
+    "time_acc": 0.9230769230769231,
+    "loc_avg": 0.7267904509283819
+  }
+}
