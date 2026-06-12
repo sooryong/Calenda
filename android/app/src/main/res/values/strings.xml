@@ -105,6 +105,9 @@
     <string name="section_calendar">Google 캘린더</string>
     <string name="calendar_select">저장할 캘린더 선택</string>
     <string name="calendar_current_fmt">저장할 캘린더: %1$s</string>
+    <string name="calendar_id_fmt">ID: %1$s</string>
+    <string name="calendar_id_pick_fmt">ID: %1$s  ▾</string>
+    <string name="calendar_id_none">ID: (로그인된 Google 계정 없음)</string>
     <string name="calendar_desc">자동 등록된 일정이 저장될 Google 캘린더. 폰에 로그인된 캘린더 중에서 선택합니다.</string>
     <string name="calendar_picker_title">저장할 캘린더 선택</string>
     <string name="calendar_none">쓰기 가능한 Google 캘린더가 없습니다 (캘린더 권한·계정 확인)</string>

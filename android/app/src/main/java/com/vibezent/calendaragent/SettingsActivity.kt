@@ -118,14 +118,28 @@ class SettingsActivity : AppCompatActivity() {
         refreshCalendarButton()
     }
 
-    /** 현재 저장 대상 캘린더를 버튼에 표시(미설정이면 자동선택 미리보기). */
+    /** 캘린더 계정(ID) 표시. 계정 1개면 선택 불필요(탭 비활성), 2개↑면 ▾ 표시 + 선택 가능. */
     private fun refreshCalendarButton() {
         val cals = CalendarWriter.writableCalendars(this)
+        val accounts = cals.map { it.account }.distinct()
         val cur = cals.firstOrNull { it.id == settings.targetCalendarId }
             ?: cals.firstOrNull { it.isGoogleOwner }
-        binding.calendarButton.text =
-            if (cur != null) getString(R.string.calendar_current_fmt, "${cur.display} (${cur.account})")
-            else getString(R.string.calendar_select)
+            ?: cals.firstOrNull()
+        val btn = binding.calendarButton
+        when {
+            cur == null -> {                              // 로그인된 Google 계정 없음
+                btn.text = getString(R.string.calendar_id_none)
+                btn.isClickable = false
+            }
+            accounts.size >= 2 -> {                       // 계정 2개↑ → 선택 가능(▾ 표시)
+                btn.text = getString(R.string.calendar_id_pick_fmt, cur.account)
+                btn.isClickable = true
+            }
+            else -> {                                     // 계정 1개 → 선택 불필요
+                btn.text = getString(R.string.calendar_id_fmt, cur.account)
+                btn.isClickable = false
+            }
+        }
     }
 
     private fun pickCalendar() = CalendarPicker.show(this) { refreshCalendarButton() }

@@ -29,14 +29,17 @@
             android:textSize="16sp"
             android:textColor="?attr/colorPrimary" />
 
-        <Button
+        <TextView
             android:id="@+id/calendarButton"
-            style="?android:attr/buttonBarButtonStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:gravity="start|center_vertical"
-            android:text="@string/calendar_select" />
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:background="?attr/selectableItemBackground" />
 
         <TextView
             android:layout_width="match_parent"
