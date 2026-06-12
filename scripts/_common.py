@@ -208,33 +208,55 @@ def _is_machine_sender(sender: str) -> bool:
     return digits.isdigit() and len(digits) >= 7
 
 
+def _split_sender(sender: str) -> tuple:
+    """카톡 표시명 '이름 소속 …' → (이름, 소속). 단일 토큰이면 (이름, None).
+    예: '정원구 페테리안 초창26탈 경북대' → ('정원구', '페테리안'); '박팀장' → ('박팀장', None).
+    소속은 첫 번째 그룹 토큰만 취함(코호트·학교 등 뒤 토큰은 노이즈라 버림)."""
+    s = (sender or "").replace("[Web발신]", "").strip()
+    if not s:
+        return (None, None)
+    toks = s.split()
+    return (toks[0], toks[1] if len(toks) > 1 else None)
+
+
 def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None) -> str:
     """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·출처(소속)는 앱이 붙인다.
-      누구와: '{참석자}와/과 {활동}'
-      출처:   ' · {발신자}'  (소속 있으면 ' · {발신자} ({소속})', 기관 발신이면 ' · {기관}')
-    예: 저녁식사+[민지] → '민지와 저녁식사';  주간 회의+발신 박과장 → '주간 회의 · 박과장';
-        Kickoff+발신 Sarah Lee/소속 Company → 'Kickoff · Sarah Lee (Company)';  진료+기관 서울내과 → '진료 · 서울내과'.
-    그룹(참석자 3명↑): 이름을 제목에 안 붙이고 활동만(예: '동기회'). 참석자는 캘린더 attendees로.
-    전화번호/이메일형 발신자는 출처로 안 붙임(제목 오염 방지: '실업인증 신청 · 01038139885' 같은 케이스)."""
+    형식: '[참석자와/과] 활동(발신자[/소속])'. 참석자 여럿은 '·'(공백 없음)로 연결.
+    규칙:
+      · 발신자 == 상대방(참석자): 접두 빼고 '활동(이름/소속)'.  예 '화상미팅(정원구/페테리안)'.
+      · 참석자 ≠ 발신자: '참석자와 활동(발신자)'.              예 '민지와 저녁식사(박팀장)'.
+      · 참석자 2명↑: '이서연·박도윤과 회의(...)'.  그룹(3명↑): 접두 생략, '동기회(...)'.
+      · 소속 없으면 '활동(이름)'. 기관 발신은 '활동(기관)'. 전화/이메일/'나'는 출처 생략."""
     title = (base_title or "일정").strip()
-    who = [a for a in (attendees or []) if a and a not in title]
-    if who and len(who) < 3:                                # 1~2명만 '누구와' 접두. 3명↑은 활동만.
-        joined = ", ".join(who)
+
+    # 발신자 이름/소속 분리 (사람 발신만; 기관/기계/'나'는 제외)
+    sname, saffil = (None, None)
+    if sender and sender not in ("나", "Me", "me") and not _is_machine_sender(sender):
+        sname, saffil = _split_sender(sender)
+
+    # '누구와' 접두 = 발신자 본인이 아닌 참석자만. 그룹 판정은 (발신자 제외 전) 전체 인원 기준.
+    all_who = [a for a in (attendees or []) if a and a not in title]
+    is_group = len(all_who) >= 3
+    who = [a for a in all_who if not (sname and (a == sname or a in sname or sname in a))]
+    if who and not is_group:
+        joined = "·".join(who)                              # 참석자 여럿 → 공백 없는 가운뎃점
         title = f"{joined}{_gwa(joined)} {title}"
 
-    src = None
-    if sender and sender not in ("나", "Me", "me") and not _is_machine_sender(sender):
-        s = sender.replace("[Web발신]", "").strip()         # SMS 웹발신 접두 정리
-        if organizer and organizer not in s:
-            src = f"{s} ({organizer})"                      # 외부 개인 + 소속
+    # 출처(보낸사람[/소속]) → 활동 뒤 괄호로
+    inner = None
+    if sname:
+        if organizer and organizer not in sname:
+            inner = f"{sname}/{organizer}"                  # 외부 개인 + 명시 소속(organizer 우선)
         elif organizer:
-            src = organizer                                # 기관 발신(발신자=소속)
+            inner = organizer                              # 기관 발신
+        elif saffil:
+            inner = f"{sname}/{saffil}"                     # 카톡 이름/소속
         else:
-            src = s
+            inner = sname
     elif organizer:
-        src = organizer
-    if src and src not in title:
-        title = f"{title} · {src}"
+        inner = organizer
+    if inner and inner not in title:
+        title = f"{title}({inner})"
     return title
 
 

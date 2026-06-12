@@ -163,27 +163,51 @@ object DateResolver {
         return out
     }
 
-    /** 캘린더 표시 제목 조합: 누구와 + 활동 + ` · 발신자(소속)`. (_common.compose_title 미러)
-     *  그룹(참석자 3명↑)은 이름 접두 생략(활동만). 전화/이메일형 발신자는 출처로 안 붙임. */
+    /** 카톡 표시명 '이름 소속 …' → (이름, 소속). 단일 토큰이면 (이름, null). (_common._split_sender 미러) */
+    private fun splitSender(sender: String?): Pair<String?, String?> {
+        val s = (sender ?: "").replace("[Web발신]", "").trim()
+        if (s.isEmpty()) return Pair(null, null)
+        val toks = s.split(Regex("\\s+"))
+        return Pair(toks[0], if (toks.size > 1) toks[1] else null)
+    }
+
+    /** 캘린더 표시 제목 조합. (_common.compose_title 미러)
+     *  형식: '[참석자와/과] 활동(발신자[/소속])'. 참석자 여럿은 '·'(공백 없음)로 연결.
+     *  · 발신자==상대방(참석자): 접두 빼고 `활동(이름/소속)`  예 '화상미팅(정원구/페테리안)'
+     *  · 참석자≠발신자: `참석자와 활동(발신자)`             예 '민지와 저녁식사(박팀장)'
+     *  · 그룹(3명↑): 접두 생략, `동기회(...)`. 전화/이메일/'나' 발신자는 출처 생략. */
     fun composeTitle(baseTitle: String?, attendees: List<String>, organizer: String?, sender: String?): String {
         var title = (baseTitle ?: "일정").trim()
-        val who = attendees.filter { it.isNotBlank() && !title.contains(it) }
-        if (who.isNotEmpty() && who.size < 3) {
-            val joined = who.joinToString(", ")
+        // 발신자 이름/소속 분리 (사람 발신만)
+        var sname: String? = null
+        var saffil: String? = null
+        if (!sender.isNullOrBlank() && sender !in listOf("나", "Me", "me") && !isMachineSender(sender)) {
+            val p = splitSender(sender); sname = p.first; saffil = p.second
+        }
+        val sn = sname
+        // '누구와' 접두 = 발신자 본인 아닌 참석자만; 그룹 판정은 (발신자 제외 전) 전체 인원 기준
+        val allWho = attendees.filter { it.isNotBlank() && !title.contains(it) }
+        val isGroup = allWho.size >= 3
+        val who = allWho.filter { a -> sn == null || !(a == sn || sn.contains(a) || a.contains(sn)) }
+        if (who.isNotEmpty() && !isGroup) {
+            val joined = who.joinToString("·")                // 참석자 여럿 → 공백 없는 가운뎃점
             title = "$joined${gwa(joined)} $title"
         }
-        var src: String? = null
-        if (!sender.isNullOrBlank() && sender !in listOf("나", "Me", "me") && !isMachineSender(sender)) {
-            val s = sender.replace("[Web발신]", "").trim()
-            src = when {
-                !organizer.isNullOrBlank() && !s.contains(organizer) -> "$s ($organizer)"
-                !organizer.isNullOrBlank() -> organizer
-                else -> s
+        // 출처(보낸사람[/소속]) → 활동 뒤 괄호로
+        var inner: String? = null
+        if (sn != null) {
+            val org = organizer
+            inner = when {
+                !org.isNullOrBlank() && !sn.contains(org) -> "$sn/$org"
+                !org.isNullOrBlank() -> org
+                !saffil.isNullOrBlank() -> "$sn/$saffil"
+                else -> sn
             }
         } else if (!organizer.isNullOrBlank()) {
-            src = organizer
+            inner = organizer
         }
-        if (src != null && !title.contains(src)) title = "$title · $src"
+        val inr = inner
+        if (inr != null && !title.contains(inr)) title = "$title($inr)"
         return title
     }
 
