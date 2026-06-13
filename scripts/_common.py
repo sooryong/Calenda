@@ -127,7 +127,7 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
             y2, mo2 = (y + 1, 1) if mo == 12 else (y, mo + 1)
             cand = _date(y2, mo2, min(n, _calendar.monthrange(y2, mo2)[1]))
         return cand
-    m = _re.match(r"^(\d{1,2})[월/](\d{1,2})일?$", token)  # 월-일 명시: 6월16일 / 6/16 → 가까운 미래(연도 추론)
+    m = _re.match(r"^(\d{1,2})[월/.](\d{1,2})일?$", token)  # 월-일 명시: 6월16일 / 6/16 / 5.29 → 가까운 미래(연도 추론)
     if m:
         mo_, d_ = int(m.group(1)), int(m.group(2))
         if 1 <= mo_ <= 12 and 1 <= d_ <= 31:

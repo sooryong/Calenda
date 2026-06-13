@@ -76,7 +76,7 @@ object DateResolver {
             }
             return cand
         }
-        Regex("^(\\d{1,2})[월/](\\d{1,2})일?$").find(t)?.let {   // 월-일 명시: 6월16일 / 6/16 → 가까운 미래(연도 추론)
+        Regex("^(\\d{1,2})[월/.](\\d{1,2})일?$").find(t)?.let {   // 월-일 명시: 6월16일 / 6/16 / 5.29 → 가까운 미래(연도 추론)
             val mo = it.groupValues[1].toInt()
             val d = it.groupValues[2].toInt()
             if (mo in 1..12 && d in 1..31) {
