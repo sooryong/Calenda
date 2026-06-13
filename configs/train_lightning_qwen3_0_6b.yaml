@@ -2,7 +2,7 @@
 # L4 GPU(VRAM 24GB)에 맞춰 배치 상향. Kaggle r29(configs/train_qwen3_0_6b.yaml)와
 # 데이터·모델·유효배치(32) 동일 → 두 트랙이 같은 A/B(모델만 Qwen3-0.6B). GPU/병렬만 차이.
 # 사용: 노트북 run_training 셀 CONFIG가 이 파일을 가리킴 (단일 L4면 python, 멀티면 torchrun).
-run_name: r29-qwen3-0.6b-lightning
+run_name: r30-qwen3-0.6b-lightning
 
 model_config: configs/model_qwen3_0_6b.yaml   # ← 유일한 실질 차이 (Qwen2.5-1.5B 라인과)
 lora_config:  configs/lora.yaml               # target_modules 동일(Qwen3도 q/k/v/o/gate/up/down_proj)
@@ -26,7 +26,7 @@ max_grad_norm: 1.0
 seed: 42
 
 # 출력 — Kaggle r29(models/lora/r29-qwen3-0.6b)와 격리되도록 -lightning 접미사
-output_dir: models/lora/r29-qwen3-0.6b-lightning
+output_dir: models/lora/r30-qwen3-0.6b-lightning
 logging_steps: 10
 save_strategy: epoch
 save_total_limit: 2
