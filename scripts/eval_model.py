@@ -139,23 +139,12 @@ def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> s
     return text.strip()
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True)
-    ap.add_argument("--eval", required=True)
-    ap.add_argument("--out", default="logs/eval_latest.json")
-    ap.add_argument("--system_prompt", default=None, help="없으면 model_qwen.yaml 사용")
-    ap.add_argument("--failures_out", default="data/failures/round_latest.jsonl")
-    args = ap.parse_args()
+def run_eval(samples, infer_fn, out=None, failures_out=None):
+    """샘플을 infer_fn(sample)->raw로 추론하고 채점·집계해 metrics 반환.
 
-    if args.system_prompt is None:
-        import yaml
-        with open("configs/model_qwen.yaml", "r", encoding="utf-8") as f:
-            args.system_prompt = yaml.safe_load(f)["system_prompt"]
-
-    model, tok = load_model(args.model)
-    samples = list(read_jsonl(args.eval))
-
+    eval_model(HF transformers)과 eval_gguf(llama.cpp)가 **동일 채점**을 공유하기 위한
+    단일 경로. 추론 방식만 infer_fn으로 주입받고, 점수 계산·집계·실패저장은 여기서 일괄.
+    """
     json_valid = 0
     has_sched_correct = 0
     field_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
@@ -170,7 +159,7 @@ def main():
     tp_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
 
     for sample in tqdm(samples, desc="eval"):
-        raw = infer(model, tok, args.system_prompt, sample)
+        raw = infer_fn(sample)
         pred = safe_json_loads(raw)
 
         gold = sample["gold"]
@@ -255,17 +244,40 @@ def main():
         "loc_avg": tp_sum["loc_f1"] / max(1, tp_n),
     }
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(metrics, ensure_ascii=False, indent=2))
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
     # 실패 저장 (다음 폐루프 입력)
-    if failures:
-        Path(args.failures_out).parent.mkdir(parents=True, exist_ok=True)
-        with open(args.failures_out, "w", encoding="utf-8") as f:
+    if failures and failures_out:
+        Path(failures_out).parent.mkdir(parents=True, exist_ok=True)
+        with open(failures_out, "w", encoding="utf-8") as f:
             for r in failures:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        print(f"[eval] 실패 {len(failures)}건 → {args.failures_out}")
+        print(f"[eval] 실패 {len(failures)}건 → {failures_out}")
+
+    return metrics
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", required=True)
+    ap.add_argument("--eval", required=True)
+    ap.add_argument("--out", default="logs/eval_latest.json")
+    ap.add_argument("--system_prompt", default=None, help="없으면 model_qwen.yaml 사용")
+    ap.add_argument("--failures_out", default="data/failures/round_latest.jsonl")
+    args = ap.parse_args()
+
+    if args.system_prompt is None:
+        import yaml
+        with open("configs/model_qwen.yaml", "r", encoding="utf-8") as f:
+            args.system_prompt = yaml.safe_load(f)["system_prompt"]
+
+    model, tok = load_model(args.model)
+    samples = list(read_jsonl(args.eval))
+    run_eval(samples, lambda s: infer(model, tok, args.system_prompt, s),
+             out=args.out, failures_out=args.failures_out)
 
 
 if __name__ == "__main__":
