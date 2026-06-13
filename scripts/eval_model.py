@@ -114,9 +114,17 @@ def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> s
         {"role": "system", "content": system},
         {"role": "user", "content": user_block},
     ]
+    # Qwen3 등 thinking 모델: non-thinking은 빈 <think></think> 블록으로 표현된다.
+    # 학습 렌더가 assistant 턴에 항상 <think>\n\n</think>\n\n{json}을 넣으므로(템플릿 강제),
+    # 추론도 enable_thinking=False로 프롬프트에 빈 think 블록을 미리 채워 순수 JSON만 생성하게
+    # 맞춰야 학습 분포와 일치한다. 안 맞추면 모델이 <think> prefix를 뱉어 JSON 파싱이 깨진다.
+    # Qwen2.5는 템플릿에 enable_thinking이 없어 kwarg 미전달(동작 불변).
+    extra = {}
+    if "enable_thinking" in (getattr(tok, "chat_template", None) or ""):
+        extra["enable_thinking"] = False
     # transformers 5.x: apply_chat_template은 BatchEncoding 반환
     # transformers 4.x: Tensor 반환. 둘 다 호환.
-    encoded = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True)
+    encoded = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True, **extra)
     if hasattr(encoded, "input_ids"):
         input_ids = encoded.input_ids.to(model.device)
     else:

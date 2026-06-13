@@ -362,6 +362,12 @@ def extract_json_block(text: str) -> str:
     (모델이 reasoning 후 재진술하는 케이스 — 최종 답안은 마지막 블록).
     """
     t = text.strip()
+    # thinking 모델(Qwen3 등)이 선두에 남긴 <think>...</think> 블록 제거(방어).
+    # 정상 경로는 enable_thinking=False로 애초에 안 나오지만, 빈/비-빈 think prefix를 견디게 한다.
+    if t.startswith("<think>"):
+        _end = t.find("</think>")
+        if _end != -1:
+            t = t[_end + len("</think>"):].strip()
     blocks = _FENCE_RE.findall(t)
     if blocks:
         return blocks[-1].strip()

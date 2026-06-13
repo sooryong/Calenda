@@ -8,7 +8,7 @@ lora_config:  configs/lora.yaml
 # 데이터셋 (0.5B와 완전히 동일 — 공정 비교)
 train_data: data/processed/train.jsonl
 eval_data:  data/processed/val.jsonl
-eval_golden: data/eval/real_golden.jsonl
+eval_golden: data/eval/golden.jsonl
 
 # 학습 하이퍼파라미터 (유효 batch 32 유지: 1×32). 1.5B라 per-device 배치 1로 낮춤(152k vocab OOM 회피).
 per_device_train_batch_size: 1

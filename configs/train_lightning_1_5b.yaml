@@ -9,7 +9,7 @@ lora_config:  configs/lora.yaml
 # 데이터셋 (기존과 동일)
 train_data: data/processed/train.jsonl
 eval_data:  data/processed/val.jsonl
-eval_golden: data/eval/real_golden.jsonl
+eval_golden: data/eval/golden.jsonl
 
 # 학습 하이퍼파라미터 (유효 batch 32 유지: 4 × 8 = 32)
 # L4 GPU의 24GB VRAM을 활용해 배치를 4로 올려 학습 속도를 단축합니다.

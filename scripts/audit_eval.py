@@ -7,7 +7,7 @@
 event 개수 불일치로 세 지표를 0으로 박는다 → 추출 품질이 검출 오류에 오염됨.
 여기선 '올바로 검출된 양성'에 한해 추출 품질을 따로 본다.
 
-사용: python scripts/audit_eval.py --model models/merged/r15-qwen0.5b --eval data/eval/real_golden.jsonl
+사용: python scripts/audit_eval.py --model models/merged/r15-qwen0.5b --eval data/eval/golden.jsonl
 """
 from __future__ import annotations
 import argparse, json

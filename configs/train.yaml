@@ -9,7 +9,7 @@ lora_config:  configs/lora.yaml
 # 데이터셋 (고정 이름 — 라운드별 내용은 git 커밋/Kaggle 데이터셋 버전으로 추적)
 train_data: data/processed/train.jsonl
 eval_data:  data/processed/val.jsonl
-eval_golden: data/eval/real_golden.jsonl   # 실 채널 골든 50건(r20: +출금 거래알림 음성·격식 Gmail 출범식 양성 held-out)
+eval_golden: data/eval/golden.jsonl   # 실 채널 골든 50건(real_golden을 golden으로 통합. r20: +출금 거래알림 음성·격식 Gmail 출범식 양성 held-out)
 
 # 학습 하이퍼파라미터
 per_device_train_batch_size: 2         # vocab 152k logits OOM 회피 (4→2). 유효배치는 accum으로 유지
