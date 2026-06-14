@@ -36,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(ctx: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
-                ctx.applicationContext, AppDatabase::class.java, "calendar-agent.db",
+                ctx.applicationContext, AppDatabase::class.java, "calenda.db",
             ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration(dropAllTables = true)  // 그 외 비정상 케이스 백스톱
                 .build().also { INSTANCE = it }

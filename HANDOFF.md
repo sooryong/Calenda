@@ -83,7 +83,7 @@
 **검증 도구(다음 세션용)** — 앱 DB 직접 확인이 가장 확실(디버그 빌드):
 ```
 # Windows: /tmp 말고 프로젝트 경로 사용. adb는 SDK 절대경로, MSYS_NO_PATHCONV=1.
-adb exec-out run-as com.calenda cat databases/calendar-agent.db > ./cal.db
+adb exec-out run-as com.calenda cat databases/calenda.db > ./cal.db
 # sqlite로 detected_events의 title/baseTitle/room/attendees 확인 → 병합·방캡처 판정
 ```
 room= 로그가 필요하면 KakaoNotificationListener/MessagePipeline에 room 로깅 한 줄 추가가 빠름(현재 미로깅).
