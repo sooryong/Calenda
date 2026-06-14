@@ -31,7 +31,8 @@ object CalendarWriter {
         val values = ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, calId)
             put(CalendarContract.Events.TITLE, event.title)
-            event.location?.let { put(CalendarContract.Events.EVENT_LOCATION, it) }
+            // EVENT_LOCATION은 물리 장소만(지도/길찾기). 줌·전화 등 온라인은 description에만(아래 buildDescription).
+            event.location?.takeIf { isPhysicalLocation(it) }?.let { put(CalendarContract.Events.EVENT_LOCATION, it) }
             buildDescription(event)?.let { put(CalendarContract.Events.DESCRIPTION, it) }
             put(CalendarContract.Events.DTSTART, startMs)
             put(CalendarContract.Events.EVENT_TIMEZONE, tz)
@@ -68,7 +69,8 @@ object CalendarWriter {
 
         val values = ContentValues().apply {
             put(CalendarContract.Events.TITLE, event.title)
-            put(CalendarContract.Events.EVENT_LOCATION, event.location ?: "")      // 빈 문자열=장소 지움
+            // 물리 장소만 EVENT_LOCATION(온라인이면 빈 문자열=지움). 온라인·참석자는 description으로.
+            put(CalendarContract.Events.EVENT_LOCATION, event.location?.takeIf { isPhysicalLocation(it) } ?: "")
             put(CalendarContract.Events.DESCRIPTION, buildDescription(event) ?: "")
             put(CalendarContract.Events.DTSTART, startMs)
             put(CalendarContract.Events.EVENT_TIMEZONE, tz)
@@ -161,9 +163,28 @@ object CalendarWriter {
             ?: all.first().id
     }
 
+    // 온라인 회의 도구·원격 키워드 (소문자 비교; 한글은 lowercase 무영향). location이 이걸 포함하면 '비물리'.
+    private val ONLINE_KEYS = listOf(
+        "줌", "구글밋", "구글 밋", "팀즈", "웹엑스", "페이스타임", "스카이프", "행아웃", "웨일온",
+        "온라인", "화상", "전화", "zoom", "google meet", "teams", "webex", "skype", "hangout", "facetime",
+    )
+
+    /** 물리 장소(지도 가능)면 true. 온라인 도구·전화는 false → EVENT_LOCATION 제외(description에만). */
+    private fun isPhysicalLocation(loc: String?): Boolean {
+        val l = loc?.trim()?.lowercase() ?: return false
+        if (l.isEmpty()) return false
+        return ONLINE_KEYS.none { l.contains(it) }
+    }
+
+    /** 캘린더 description: '장소: …' + '참석자: …' + 모델 description(전화·URL·메모). 참석자는 게스트 필드가
+     *  아니라 description에만 넣는다(게스트로 넣으면 초대 메일 발송 — 수동 검출 일정엔 부적절). */
     private fun buildDescription(event: CalendarEvent): String? {
-        // 참석자는 캘린더에 넣지 않는다(사용자 운영방식 — 일정의 핵심은 활동·시간이지 참석자가 아님).
-        return event.description?.takeIf { it.isNotBlank() }
+        val lines = mutableListOf<String>()
+        event.location?.trim()?.takeIf { it.isNotEmpty() }?.let { lines.add("장소: $it") }
+        val atts = event.attendees.filter { it.isNotBlank() }
+        if (atts.isNotEmpty()) lines.add("참석자: ${atts.joinToString(", ")}")
+        event.description?.trim()?.takeIf { it.isNotEmpty() }?.let { lines.add(it) }
+        return lines.joinToString("\n").takeIf { it.isNotEmpty() }
     }
 
     /** 'YYYY-MM-DD'(또는 ...T...의 날짜부) → 그 날짜의 UTC 자정 epoch millis. 종일 일정용. */
