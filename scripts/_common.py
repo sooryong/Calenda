@@ -275,6 +275,8 @@ def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
         event.get("end_time"), event.get("all_day", False),
     )
     loc = _drop_personlike_location(event.get("location"), event.get("attendees", []))  # 사람 이름 오추출 제거
+    if loc and loc.strip() == (event.get("title") or "").strip():
+        loc = None   # location이 제목과 완전 동일 = 제목을 위치에 복제한 오추출 → 제거
     return {
         "title": compose_title(event.get("title"), event.get("attendees"),
                                event.get("organizer"), sender, channel, location=loc),

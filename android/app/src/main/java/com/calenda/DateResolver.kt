@@ -220,7 +220,8 @@ object DateResolver {
     /** 모델 추출 이벤트 → 캘린더용 CalendarEvent (시각 변환 + 제목 조합 + 장소 등 보존). */
     fun resolveEvent(receivedAt: String, sender: String?, ev: ExtractedEvent): CalendarEvent {
         val w = resolveWhen(receivedAt, ev.date, ev.time, ev.endTime, ev.allDay)
-        val loc = dropPersonlikeLocation(ev.location, ev.attendees)
+        // location==제목 = 제목을 위치에 복제한 오추출 → 제거 (_common.resolve_event 미러)
+        val loc = dropPersonlikeLocation(ev.location, ev.attendees)?.takeUnless { it.trim() == ev.title?.trim() }
         return CalendarEvent(
             title = composeTitle(ev.title, ev.attendees, ev.organizer, sender, loc),
             start = w.start,

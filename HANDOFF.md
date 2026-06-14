@@ -4,20 +4,42 @@
 
 ---
 
-## 0. 현재 배포본 — r30 Qwen3-0.6B (2026-06-14)
+## 0. 현재 배포본 — r32 Qwen3-0.6B / Q8_0 (2026-06-14)
 
-- ✅ **방향 전환: 0.5B(r22) → Qwen3-0.6B(r30)**. hybrid 폐기, 온디바이스 Qwen3-0.6B 확정(2026-06-13). 학습=빈 `<think></think>` non-thinking 프리필(strip 금지, 의도된 설계). 어댑터는 HF `sooryong9885/Calenda-Qwen3-0.6B` 백업.
-- ✅ **r30 학습→merge→양자화→평가→폰배포 전부 완료·검증.**
-  - 평가(`logs/eval_r30-qwen3-0.6b.json`, real_golden 50): **final 0.9376(역대 최고)**, recall **1.0**(놓침 0), specificity **0.909**(과발화 2), time_match **0.92**, title_f1 0.904.
-  - gguf 산출: `models/gguf/r30-qwen3-0.6b/`(Q4_K_M 396MB / Q8_0 / f16). 폰 슬롯 `calendar.Q4_K_M.gguf` **md5 `f1e8d5775676dd8c2d4a576050dcfa98` 일치 검증**.
-- ✅ **앱 패키지 통일** `com.vibezent.calendaragent` → **`com.calenda`**(namespace=applicationId, 앱이름 "Calenda"). 폰 **신규 설치**(2026-06-14 11:03), 구 `com.calendaragent` 제거됨. 빌드 성공(`android/build_log.txt`). ⚠ OAuth 클라이언트도 새 패키지 `com.calenda`로 재발급 필요(Gmail API 쓸 때).
-- 🔄 **r31 진행 중(데이터·코드 준비 완료, 학습 남음)** — 설계: **장소를 표시 제목에 합성 + 신뢰도 장소 의존 제거**(실사용 "줌 미팅"이 0.85·예비된 분석에서).
-  - ✅ 앱 버그: 자동등록 신뢰도 비교 Float/Double 경계(`0.85>=0.85f`=False) 수정(`EventRouter`, `-1e-4`).
-  - ✅ `compose_title`(_common·DateResolver 미러): location을 ` @{장소}`로 제목 합성, 발신인 `[이름(소속)]`. 형식 `[참석자와] 활동 [@장소] [발신인(소속)]`. location 필드·캘린더 장소칸 유지.
-  - ✅ schema.md: 온라인 도구(줌·구글밋·팀즈·전화)도 location, 신뢰도 루브릭 장소 의존 제거.
-  - ✅ 데이터 `train.jsonl` 1961→**2029**(음성 48%): r31 하드케이스 68(온라인장소24·물리6·온라인음성12 + **r30 골든 5실패 보완** neg_third8·neg_svc6·confirm6·formal6) + confidence 재bump 197. `configs/train_qwen3_0_6b.yaml` r31.
-  - ⏳ **남음: push → Kaggle r31 학습**(§3) → merge/quant/eval(골든 5실패 개선 확인) → 폰 배포(§4) + 앱 재빌드(DateResolver 바뀜). r30 어댑터는 HF·로컬 백업본 존재.
-- 아래 §2(r22 시점 메모)는 데이터/앱 휴리스틱 맥락 참고용으로만(점수·배포본 수치는 위가 최신).
+- ✅ **온디바이스 Qwen3-0.6B, Q8_0 배포.** Q4_K_M은 r31·r32에서 회귀(r32 Q4=0.836, 과발화8) → **Q8_0 고정**. 어댑터 HF `sooryong9885/Calenda-Qwen3-0.6B`. 학습=빈 `<think></think>` non-thinking.
+- ✅ **제목 설계 = 자연제목 보존** (r31 "AWS 교육팀과 줌회의"→"AWS 교육" 분해실패 후 전환). 모델 title=메시지 일정제목을 **시간만 제외, 최대한 보존**(활동-only 분해 폐기). compose_title은 **발신인 태그만**(`{제목} [발신인(소속)]`). [[title-natural-preservation]]
+  - r32 평가: final **0.9446**, **title_f1 0.947**(r31 0.907→), TP title **0.977**, recall 0.964, time 0.92, 과발화 2. 데이터 train.jsonl **2052**(Haiku 전체 재라벨 681 + golden 15 + r32 조직팀 하드케이스 23). [[train-jsonl-append-workflow]]
+  - 실사용 검증: "AWS 교육팀 줌 미팅" → 제목 완전 보존 ✅.
+- ✅ **앱 (com.calenda, r32 전부 배포):** Q8_0 슬롯(md5 검증, r31=`.r31-bak`) · 신뢰도 float버그 수정(자동등록) · **캘린더 필드배치**(장소·참석자→description, **물리 장소만→EVENT_LOCATION**·온라인 제외) · **URL 추출**(줌·구글밋·팀즈·지도 링크→description) · **location==title 가드**(제목복제 제거) · 모델명 `R32-Q3-0.6B-Q8` 표시.
+- ⚠ **Kaggle 3-A(양자화) llama.cpp 빌드 실패** → r32는 **로컬 양자화 우회**(HF 어댑터→merge_lora→`/d/llama.cpp/build_bin/llama-quantize.exe`). 다음 라운드도 동일 우회 가능(merge/quant 로컬 환경 OK: torch-cpu·peft).
+- ⚠ **무선 adb 불안정**(포트 회전·대용량 푸시 끊김): 폰 화면 켜고 무선디버깅 화면 띄우면 안정. mDNS 시리얼 `adb-R3CY50525WX-...` 사용(포트 자동추적).
+
+---
+
+## 0-B. ★ r33 데이터 방향 (자연제목 유지 + 필드 정합 + 환각 억제) — 내일 실행
+
+**진단(r32 실사용):** 제목 자연보존은 성공. 그러나 모델이 **보조 필드를 안 채우거나 잘못 채움**:
+- `location` 비움(제목에만 보존) → 앱 새 필드배치(장소→설명/지도)가 빈 채. 또는 **제목을 location에 복제**(대구TP간담회 케이스, 앱 가드로 임시방어).
+- 무시간 맥락 언급에 **시각 환각**(대구TP에 14:00 지어냄) — **시각이 최우선 KPI라 가장 심각**.
+- description 환각("이후 사진을 보냅니다").
+
+**목표:** 제목 자연보존 유지 + **location·attendees 필드를 메시지 근거로 정확히** + **환각 억제**.
+
+1. **필드 정합 재라벨 (Haiku)** — `relabel_titles_haiku.py` 확장(또는 신규 스크립트)로 양성 gold의 **location·attendees 필드도 재생성**:
+   - `location`: 실제 장소/도구(줌·강남역·회사3층)면 채움, 없으면 **null**, **제목 복제 금지**.
+   - `attendees`: 실제 참석자(사람·팀)면 채움, 없으면 `[]`.
+   - `title`은 r32 그대로(자연보존). title-only 재라벨이 아니라 **필드 동시 검증**.
+2. **환각 억제 하드케이스** `build_r33_hardcases.py`:
+   - **무시간 → `time:null`/종일** (맥락 언급·"마치고 가면 늦을 것" 류 — KPI 직결).
+   - **무장소 → `location:null`** (긴 행사명, 장소 미언급).
+   - **무근거 → `description:null`**.
+3. **schema.md 갱신**: location/attendees 필드 규칙(있으면 채움·없으면 null·**제목복제 금지**) + 무시간 `time:null` 명시.
+4. (선택·낮은 우선) 잔존 과발화 2(자료공유 격식메일·골프조인 서비스알림) 음성 소량 — 0.6B 천장 가능.
+5. **assemble → push → Kaggle r33 학습 → 로컬 양자화(Q8_0) → 배포.** append 워크플로(`assemble_train --apply 금지`). configs run_name·output_dir r32→r33.
+
+**전제 유지:** 음성비 ~48%, Q8_0 배포, ANTHROPIC_API_KEY(.env) 필요(Haiku 재라벨).
+
+- 아래 §1·§2(구 r19/r22 메모)는 휴리스틱 맥락 참고용으로만(점수·배포본 수치는 위가 최신).
 
 ---
 
