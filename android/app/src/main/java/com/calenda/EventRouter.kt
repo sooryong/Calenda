@@ -25,7 +25,9 @@ object EventRouter {
     ) {
         val settings = SettingsStore.from(appCtx)
         val autoEligible = settings.autoAddEnabled &&
-            (event.confidence >= settings.confidenceThreshold) &&
+            // 경계 오차 흡수: confidence는 Double, threshold는 Float(0.85f≈0.85000002)라
+            // 모델이 정확히 0.85를 내면 0.85>=0.85f가 False가 돼 동률인데도 탈락하던 버그 방지.
+            (event.confidence >= settings.confidenceThreshold - 1e-4) &&
             CalendarWriter.hasPermission(appCtx) &&
             (!settings.strictRegister || meetsStrictCriteria(event))
 
