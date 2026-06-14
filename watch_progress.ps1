@@ -1,4 +1,4 @@
-Set-Location D:\calendar-agent
+Set-Location D:\calenda
 $outPath = "data\raw\v1.jsonl"
 $milestonePath = "logs\milestones.log"
 $target = 3620

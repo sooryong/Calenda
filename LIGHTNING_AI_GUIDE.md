@@ -23,7 +23,7 @@ huggingface-cli login
 
 # 3. 로컬 data/ 폴더 전체를 업로드
 # (your-username을 본인의 Hugging Face ID로 변경하세요)
-huggingface-cli upload your-username/calendar-agent-dataset ./data --repo-type dataset
+huggingface-cli upload your-username/calenda-dataset ./data --repo-type dataset
 ```
 
 ---
@@ -36,8 +36,8 @@ huggingface-cli upload your-username/calendar-agent-dataset ./data --repo-type d
 
 ```bash
 # 1. 프로젝트 코드 가져오기 (Git 클론 또는 직접 파일 업로드)
-git clone https://github.com/your-username/calendar-agent.git
-cd calendar-agent
+git clone https://github.com/your-username/calenda.git
+cd calenda
 
 # 2. 의존성 패키지 설치
 pip install -e .
@@ -47,7 +47,7 @@ pip install huggingface_hub
 huggingface-cli login
 
 # 4. Hugging Face에서 데이터셋 다운로드
-huggingface-cli download your-username/calendar-agent-dataset --local-dir ./data --repo-type dataset
+huggingface-cli download your-username/calenda-dataset --local-dir ./data --repo-type dataset
 
 # 5. 모델 학습 시작
 python scripts/train_lora.py --config configs/train.yaml
@@ -61,7 +61,7 @@ python scripts/train_lora.py --config configs/train.yaml
 
 ```bash
 # models/lora/r11-qwen 폴더를 Hugging Face 모델 저장소에 업로드
-huggingface-cli upload your-username/calendar-agent-lora ./models/lora/r11-qwen --repo-type model
+huggingface-cli upload your-username/calenda-lora ./models/lora/r11-qwen --repo-type model
 ```
 
 ---

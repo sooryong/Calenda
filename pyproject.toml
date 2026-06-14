@@ -1,5 +1,5 @@
 [project]
-name = "calendar-agent"
+name = "calenda"
 version = "0.1.0"
 description = "On-device schedule extraction agent — Qwen2.5-0.5B + LoRA + GGUF INT4"
 readme = "README.md"

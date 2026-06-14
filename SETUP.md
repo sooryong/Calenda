@@ -36,7 +36,7 @@ ANTHROPIC_API_KEY=sk-ant-api03-...실제키...
 PowerShell에서 프로젝트 폴더로 이동:
 
 ```powershell
-cd D:\calendar-agent
+cd D:\calenda
 ```
 
 가상환경 생성 + 활성화:
@@ -115,7 +115,7 @@ pip install bitsandbytes
 
 ### 4-2. 한글 경로
 
-`D:\calendar-agent`는 영어 경로라 문제 없음. 다만 `HF_HOME=D:/calendar-agent/.cache/hf`처럼 슬래시 방향 주의 (Python은 `/` 권장, Windows도 인식함).
+`D:\calenda`는 영어 경로라 문제 없음. 다만 `HF_HOME=D:/calenda/.cache/hf`처럼 슬래시 방향 주의 (Python은 `/` 권장, Windows도 인식함).
 
 ### 4-3. llama.cpp 빌드 (양자화 단계)
 

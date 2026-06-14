@@ -43,7 +43,7 @@
 ## 3. 디렉토리 구조
 
 ```
-calendar-agent/
+calenda/
 ├── CLAUDE.md             ← 이 파일
 ├── HANDOFF.md            ← 지금 당장 할 일 (세션 시작 시 같이 봐라)
 ├── README.md             ← 사람용 개요

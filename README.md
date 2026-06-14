@@ -29,7 +29,7 @@
 ## 디렉토리
 
 ```
-calendar-agent/
+calenda/
 ├── data/         # raw 합성 / processed / eval(골든) / failures
 ├── prompts/      # planner.md, generator.md, evaluator.md
 ├── scripts/      # plan, generate, evaluate_data, train_lora, merge_lora, eval_model, quantize
