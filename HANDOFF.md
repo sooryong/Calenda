@@ -11,7 +11,13 @@
   - 평가(`logs/eval_r30-qwen3-0.6b.json`, real_golden 50): **final 0.9376(역대 최고)**, recall **1.0**(놓침 0), specificity **0.909**(과발화 2), time_match **0.92**, title_f1 0.904.
   - gguf 산출: `models/gguf/r30-qwen3-0.6b/`(Q4_K_M 396MB / Q8_0 / f16). 폰 슬롯 `calendar.Q4_K_M.gguf` **md5 `f1e8d5775676dd8c2d4a576050dcfa98` 일치 검증**.
 - ✅ **앱 패키지 통일** `com.vibezent.calendaragent` → **`com.calenda`**(namespace=applicationId, 앱이름 "Calenda"). 폰 **신규 설치**(2026-06-14 11:03), 구 `com.calendaragent` 제거됨. 빌드 성공(`android/build_log.txt`). ⚠ OAuth 클라이언트도 새 패키지 `com.calenda`로 재발급 필요(Gmail API 쓸 때).
-- ⏳ **다음: r30 실사용 온디바이스 검증** — 실수신 SMS/카톡으로 검출·시각정확도 관찰. logcat `MessagePipeline: onMessage`로 캡처 확인. 아래 §2(r22 시점 메모)는 데이터/앱 휴리스틱 맥락 참고용으로만(점수·배포본 수치는 위가 최신).
+- 🔄 **r31 진행 중(데이터·코드 준비 완료, 학습 남음)** — 설계: **장소를 표시 제목에 합성 + 신뢰도 장소 의존 제거**(실사용 "줌 미팅"이 0.85·예비된 분석에서).
+  - ✅ 앱 버그: 자동등록 신뢰도 비교 Float/Double 경계(`0.85>=0.85f`=False) 수정(`EventRouter`, `-1e-4`).
+  - ✅ `compose_title`(_common·DateResolver 미러): location을 ` @{장소}`로 제목 합성, 발신인 `[이름(소속)]`. 형식 `[참석자와] 활동 [@장소] [발신인(소속)]`. location 필드·캘린더 장소칸 유지.
+  - ✅ schema.md: 온라인 도구(줌·구글밋·팀즈·전화)도 location, 신뢰도 루브릭 장소 의존 제거.
+  - ✅ 데이터 `train.jsonl` 1961→**2029**(음성 48%): r31 하드케이스 68(온라인장소24·물리6·온라인음성12 + **r30 골든 5실패 보완** neg_third8·neg_svc6·confirm6·formal6) + confidence 재bump 197. `configs/train_qwen3_0_6b.yaml` r31.
+  - ⏳ **남음: push → Kaggle r31 학습**(§3) → merge/quant/eval(골든 5실패 개선 확인) → 폰 배포(§4) + 앱 재빌드(DateResolver 바뀜). r30 어댑터는 HF·로컬 백업본 존재.
+- 아래 §2(r22 시점 메모)는 데이터/앱 휴리스틱 맥락 참고용으로만(점수·배포본 수치는 위가 최신).
 
 ---
 
