@@ -50,13 +50,44 @@ data class DetectedEvent(
     val threadJson: String? = null,    // 멀티턴 <대화내역> 직렬화 (없으면 null=단일)
     val editedJson: String? = null,    // 사용자 교정본(Phase C 편집화면이 채움). 있으면 최우선 gold.
 ) {
-    /** DB 저장형 → 캘린더 표시/등록용 휘발성 모델. */
-    fun toCalendarEvent(): CalendarEvent = CalendarEvent(
-        title = title, start = start, end = end, allDay = allDay,
-        location = location, attendees = attendees, description = description,
-        recurrence = recurrence, confidence = confidence,
-    )
+    /** DB 저장형 → 캘린더 표시/등록용 휘발성 모델.
+     *  rawMessage에서 줌/구글밋/지도 등 URL을 정규식으로 뽑아 description에 합친다
+     *  (0.6B는 긴 URL을 정확히 못 베끼므로 앱이 원문에서 직접 추출). */
+    fun toCalendarEvent(): CalendarEvent {
+        val links = extractMessageLinks(rawMessage)
+        val desc = listOfNotNull(
+            description?.takeIf { it.isNotBlank() },
+            links.takeIf { it.isNotEmpty() }?.joinToString("\n") { (label, url) -> "$label: $url" },
+        ).joinToString("\n").takeIf { it.isNotEmpty() }
+        return CalendarEvent(
+            title = title, start = start, end = end, allDay = allDay,
+            location = location, attendees = attendees, description = desc,
+            recurrence = recurrence, confidence = confidence,
+        )
+    }
 }
+
+private val URL_RE = Regex("""https?://[^\s<>"')\]]+""")
+
+/** 메시지의 http(s) URL을 (라벨, url) 쌍으로 추출 — 줌/구글밋/팀즈/웹엑스 회의링크 + 지도링크 분류. */
+fun extractMessageLinks(text: String): List<Pair<String, String>> =
+    URL_RE.findAll(text)
+        .map { it.value.trimEnd('.', ',', '!', '?', ')', ']', '。') }
+        .distinct()
+        .map { url ->
+            val l = url.lowercase()
+            val label = when {
+                "zoom.us" in l || "zoom.com" in l -> "줌 링크"
+                "meet.google" in l -> "구글밋 링크"
+                "teams.microsoft" in l || "teams.live" in l -> "팀즈 링크"
+                "webex" in l -> "웹엑스 링크"
+                "maps.google" in l || "maps.app.goo.gl" in l || "goo.gl/maps" in l ||
+                    "naver.me" in l || "map.naver" in l || "map.kakao" in l || "kko.to" in l -> "지도"
+                else -> "링크"
+            }
+            label to url
+        }
+        .toList()
 
 /** Room 타입 컨버터: List<String> ↔ String, EventStatus ↔ String. */
 class Converters {
