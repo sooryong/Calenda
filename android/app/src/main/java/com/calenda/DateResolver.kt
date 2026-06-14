@@ -176,7 +176,7 @@ object DateResolver {
      *  · 발신자==상대방(참석자): 접두 빼고 `활동(이름/소속)`  예 '화상미팅(정원구/페테리안)'
      *  · 참석자≠발신자: `참석자와 활동(발신자)`             예 '민지와 저녁식사(박팀장)'
      *  · 그룹(3명↑): 접두 생략, `동기회(...)`. 전화/이메일/'나' 발신자는 출처 생략. */
-    fun composeTitle(baseTitle: String?, attendees: List<String>, organizer: String?, sender: String?): String {
+    fun composeTitle(baseTitle: String?, attendees: List<String>, organizer: String?, sender: String?, location: String? = null): String {
         var title = (baseTitle ?: "일정").trim()
         // 발신자 이름/소속 분리 (사람 발신만)
         var sname: String? = null
@@ -193,21 +193,24 @@ object DateResolver {
             val joined = who.joinToString("·")                // 참석자 여럿 → 공백 없는 가운뎃점
             title = "$joined${gwa(joined)} $title"
         }
-        // 출처(보낸사람[/소속]) → 활동 뒤 괄호로
+        // 장소(물리·온라인 공통) → 활동 뒤 '@{장소}'. 이미 제목에 있으면 생략.
+        val loc = location?.trim()
+        if (!loc.isNullOrEmpty() && !title.contains(loc)) title = "$title @$loc"
+        // 출처(발신인[소속]) → 활동 뒤 '[발신인(소속)]'
         var inner: String? = null
         if (sn != null) {
             val org = organizer
             inner = when {
-                !org.isNullOrBlank() && !sn.contains(org) -> "$sn/$org"
+                !org.isNullOrBlank() && !sn.contains(org) -> "$sn($org)"
                 !org.isNullOrBlank() -> org
-                !saffil.isNullOrBlank() -> "$sn/$saffil"
+                !saffil.isNullOrBlank() -> "$sn($saffil)"
                 else -> sn
             }
         } else if (!organizer.isNullOrBlank()) {
             inner = organizer
         }
         val inr = inner
-        if (inr != null && !title.contains(inr)) title = "$title($inr)"
+        if (inr != null && !title.contains(inr)) title = "$title [$inr]"
         return title
     }
 
@@ -227,12 +230,13 @@ object DateResolver {
     /** 모델 추출 이벤트 → 캘린더용 CalendarEvent (시각 변환 + 제목 조합 + 장소 등 보존). */
     fun resolveEvent(receivedAt: String, sender: String?, ev: ExtractedEvent): CalendarEvent {
         val w = resolveWhen(receivedAt, ev.date, ev.time, ev.endTime, ev.allDay)
+        val loc = dropPersonlikeLocation(ev.location, ev.attendees)
         return CalendarEvent(
-            title = composeTitle(ev.title, ev.attendees, ev.organizer, sender),
+            title = composeTitle(ev.title, ev.attendees, ev.organizer, sender, loc),
             start = w.start,
             end = w.end,
             allDay = w.allDay,
-            location = dropPersonlikeLocation(ev.location, ev.attendees),
+            location = loc,
             attendees = ev.attendees,
             description = ev.description,
             recurrence = ev.recurrence,

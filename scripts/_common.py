@@ -219,14 +219,16 @@ def _split_sender(sender: str) -> tuple:
     return (toks[0], toks[1] if len(toks) > 1 else None)
 
 
-def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None) -> str:
-    """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·출처(소속)는 앱이 붙인다.
-    형식: '[참석자와/과] 활동(발신자[/소속])'. 참석자 여럿은 '·'(공백 없음)로 연결.
+def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None, location=None) -> str:
+    """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·장소·출처(소속)는 앱이 붙인다.
+    형식: '[참석자와/과] 활동 [@장소] [발신인(소속)]'. 참석자 여럿은 '·'(공백 없음)로 연결.
+    구분자: @=장소, []=발신인, ()=발신인 소속.
+    장소(물리·온라인 공통)는 ' @{장소}'로 활동 뒤에 합성(이미 제목에 있으면 생략). location 필드도 별도 보존.
     규칙:
-      · 발신자 == 상대방(참석자): 접두 빼고 '활동(이름/소속)'.  예 '화상미팅(정원구/페테리안)'.
-      · 참석자 ≠ 발신자: '참석자와 활동(발신자)'.              예 '민지와 저녁식사(박팀장)'.
-      · 참석자 2명↑: '이서연·박도윤과 회의(...)'.  그룹(3명↑): 접두 생략, '동기회(...)'.
-      · 소속 없으면 '활동(이름)'. 기관 발신은 '활동(기관)'. 전화/이메일/'나'는 출처 생략."""
+      · 발신자 == 상대방(참석자): 접두 빼고 '활동 [이름(소속)]'.  예 '화상미팅 [정원구(페테리안)]'.
+      · 참석자 ≠ 발신자: '참석자와 활동 [발신인]'.               예 '민지와 저녁식사 [박팀장]'.
+      · 참석자 2명↑: '이서연·박도윤과 회의 [...]'.  그룹(3명↑): 접두 생략, '동기회 [...]'.
+      · 소속 없으면 '활동 [이름]'. 기관 발신은 '활동 [기관]'. 전화/이메일/'나'는 출처 생략."""
     title = (base_title or "일정").strip()
 
     # 발신자 이름/소속 분리 (사람 발신만; 기관/기계/'나'는 제외)
@@ -242,21 +244,26 @@ def compose_title(base_title, attendees=None, organizer=None, sender=None, chann
         joined = "·".join(who)                              # 참석자 여럿 → 공백 없는 가운뎃점
         title = f"{joined}{_gwa(joined)} {title}"
 
-    # 출처(보낸사람[/소속]) → 활동 뒤 괄호로
+    # 장소(물리·온라인 공통) → 활동 뒤 '@{장소}'. 이미 제목에 있으면 생략.
+    loc = (location or "").strip()
+    if loc and loc not in title:
+        title = f"{title} @{loc}"
+
+    # 출처(발신인[소속]) → 활동 뒤 '[발신인(소속)]'
     inner = None
     if sname:
         if organizer and organizer not in sname:
-            inner = f"{sname}/{organizer}"                  # 외부 개인 + 명시 소속(organizer 우선)
+            inner = f"{sname}({organizer})"                 # 외부 개인 + 명시 소속(organizer 우선)
         elif organizer:
             inner = organizer                              # 기관 발신
         elif saffil:
-            inner = f"{sname}/{saffil}"                     # 카톡 이름/소속
+            inner = f"{sname}({saffil})"                    # 카톡 이름(소속)
         else:
             inner = sname
     elif organizer:
         inner = organizer
     if inner and inner not in title:
-        title = f"{title}({inner})"
+        title = f"{title} [{inner}]"
     return title
 
 
@@ -285,13 +292,14 @@ def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
         received_at, event.get("date"), event.get("time"),
         event.get("end_time"), event.get("all_day", False),
     )
+    loc = _drop_personlike_location(event.get("location"), event.get("attendees", []))  # 사람 이름 오추출 제거
     return {
         "title": compose_title(event.get("title"), event.get("attendees"),
-                               event.get("organizer"), sender, channel),
+                               event.get("organizer"), sender, channel, location=loc),
         "start": when["start"],
         "end": when["end"],
         "all_day": when["all_day"],
-        "location": _drop_personlike_location(event.get("location"), event.get("attendees", [])),  # ← 사람 이름 오추출 제거
+        "location": loc,
         "attendees": event.get("attendees", []),
         "organizer": event.get("organizer"),
         "description": event.get("description"),
