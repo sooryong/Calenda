@@ -197,7 +197,7 @@ class SettingsActivity : AppCompatActivity() {
         val f = ModelStore.modelFile(this)
         binding.modelInfo.text = if (f.exists()) {
             val info = GgufInfo.read(f)
-            val name = info.name ?: getString(R.string.model_version_unknown)
+            val name = info.shortName() ?: getString(R.string.model_version_unknown)
             val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.KOREA)
                 .format(java.util.Date(info.lastModified))
             getString(R.string.model_version_fmt, name, date)

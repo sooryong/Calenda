@@ -119,7 +119,7 @@ class DebugActivity : AppCompatActivity() {
             return
         }
         val info = GgufInfo.read(modelFile)
-        val name = info.name ?: getString(R.string.model_version_unknown)
+        val name = info.shortName() ?: getString(R.string.model_version_unknown)
         val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.KOREA)
             .format(java.util.Date(info.lastModified))
         binding.modelVersion.text = getString(R.string.model_version_fmt, name, date)

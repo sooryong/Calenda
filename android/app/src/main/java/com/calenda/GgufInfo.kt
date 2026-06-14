@@ -19,33 +19,61 @@ object GgufInfo {
     private const val TYPE_STRING = 8
     private const val TYPE_ARRAY = 9
 
-    /** name: general.name (없으면 null). lastModified: 파일 수정시각(=업로드 시점) epoch millis. */
-    data class Info(val name: String?, val lastModified: Long)
+    /** name: general.name (없으면 null). lastModified: 파일 수정시각(=업로드 시점) epoch millis.
+     *  fileType: general.file_type (양자화 enum, 없으면 -1). */
+    data class Info(val name: String?, val lastModified: Long, val fileType: Int = -1) {
+        /** 양자화 라벨: general.file_type → "Q8_0" 등 (LLaMA file_type enum). */
+        fun quantLabel(): String = when (fileType) {
+            0 -> "F32"; 1 -> "F16"; 2 -> "Q4_0"; 3 -> "Q4_1"; 7 -> "Q8_0"
+            8 -> "Q5_0"; 9 -> "Q5_1"; 10 -> "Q2_K"; 11 -> "Q3_K_S"; 12 -> "Q3_K_M"
+            13 -> "Q3_K_L"; 14 -> "Q4_K_S"; 15 -> "Q4_K_M"; 16 -> "Q5_K_S"
+            17 -> "Q5_K_M"; 18 -> "Q6_K"
+            else -> if (fileType >= 0) "q$fileType" else ""
+        }
+
+        /** 표시 모델명: "R32-Q3-0.6B-Q8".
+         *  general.name("R32 Qwen3 0.6b") 토큰 변환(Qwen3→Q3, 0.6b→0.6B) + 양자화 단축(Q8_0→Q8), '-'로 연결. */
+        fun shortName(): String? {
+            val n = name ?: return null
+            val parts = n.trim().split(Regex("\\s+")).map { tok ->
+                Regex("(?i)qwen(\\d+)").matchEntire(tok)?.let { "Q${it.groupValues[1]}" }   // Qwen3 → Q3
+                    ?: if (tok.matches(Regex("(?i)[\\d.]+b"))) tok.uppercase() else tok       // 0.6b → 0.6B
+            }
+            val q = quantLabel().removeSuffix("_0")   // Q8_0 → Q8
+            return (parts + if (q.isNotEmpty()) listOf(q) else emptyList()).joinToString("-")
+        }
+    }
 
     fun read(file: File): Info {
         val mtime = file.lastModified()
-        val name = try {
-            BufferedInputStream(file.inputStream()).use { parseName(it) }
+        return try {
+            BufferedInputStream(file.inputStream()).use { val (n, ft) = parse(it); Info(n, mtime, ft) }
         } catch (e: Exception) {
-            null
+            Info(null, mtime)
         }
-        return Info(name, mtime)
     }
 
-    private fun parseName(s: InputStream): String? {
-        if (readU32(s) != MAGIC) return null
+    /** general.name 과 general.file_type 둘 다 읽는다(둘 다 general.* 초기 블록이라 큰 배열 전에 끝남). */
+    private fun parse(s: InputStream): Pair<String?, Int> {
+        if (readU32(s) != MAGIC) return null to -1
         readU32(s)              // version
         readU64(s)              // tensor_count
         val kvCount = readU64(s)
+        var name: String? = null
+        var fileType = -1
         var i = 0L
         while (i < kvCount) {
-            val key = readStr(s) ?: return null
+            val key = readStr(s) ?: break
             val type = readU32(s)
-            if (key == "general.name" && type == TYPE_STRING) return readStr(s)
-            skipValue(s, type)
+            when {
+                key == "general.name" && type == TYPE_STRING -> name = readStr(s)
+                key == "general.file_type" && (type == 4 || type == 5) -> fileType = readU32(s)
+                else -> skipValue(s, type)
+            }
+            if (name != null && fileType >= 0) break   // 둘 다 찾으면 종료
             i++
         }
-        return null
+        return name to fileType
     }
 
     private fun skipValue(s: InputStream, type: Int) {
