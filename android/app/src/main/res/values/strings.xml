@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Calendar Agent</string>
+    <string name="app_name">Calenda</string>
 
     <string name="model_loaded">모델 로드됨 ✓</string>
     <string name="model_present_not_loaded">모델 파일 있음 — 로드 필요</string>

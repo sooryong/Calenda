@@ -14,7 +14,7 @@
 static llama_model * g_model = nullptr;
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_vibezent_calendaragent_LlamaBridge_nativeLoadModel(
+Java_com_calenda_LlamaBridge_nativeLoadModel(
         JNIEnv * env, jobject /*thiz*/, jstring model_path) {
     static bool backends_loaded = false;
     if (!backends_loaded) {
@@ -44,7 +44,7 @@ Java_com_vibezent_calendaragent_LlamaBridge_nativeLoadModel(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_vibezent_calendaragent_LlamaBridge_nativeFree(
+Java_com_calenda_LlamaBridge_nativeFree(
         JNIEnv * /*env*/, jobject /*thiz*/) {
     if (g_model != nullptr) {
         llama_model_free(g_model);
@@ -53,7 +53,7 @@ Java_com_vibezent_calendaragent_LlamaBridge_nativeFree(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_vibezent_calendaragent_LlamaBridge_nativeComplete(
+Java_com_calenda_LlamaBridge_nativeComplete(
         JNIEnv * env, jobject /*thiz*/, jstring prompt_j, jint n_predict) {
     if (g_model == nullptr) {
         return env->NewStringUTF("[error] model not loaded");

@@ -2,4 +2,4 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
--keep class com.vibezent.calendaragent.LlamaBridge { *; }
+-keep class com.calenda.LlamaBridge { *; }

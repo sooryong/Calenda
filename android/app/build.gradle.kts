@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.vibezent.calendaragent"
+    namespace = "com.calenda"
     compileSdk = 36
 
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "com.calendaragent"   // 설치 식별자(=OAuth 클라이언트 패키지). namespace(코드 패키지)와 별개.
+        applicationId = "com.calenda"   // 설치 식별자 = 코드 패키지(통일). OAuth 클라이언트도 이 패키지.
         minSdk = 33
         targetSdk = 36
         versionCode = 1
