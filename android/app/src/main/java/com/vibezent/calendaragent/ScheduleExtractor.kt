@@ -110,14 +110,16 @@ object ScheduleExtractor {
         return parts.joinToString("\n")
     }
 
-    /** Qwen2.5 ChatML 포맷으로 프롬프트 구성. thread 지정 시 멀티턴. */
+    /** Qwen3 ChatML 포맷으로 프롬프트 구성. thread 지정 시 멀티턴.
+     *  non-thinking: assistant 턴에 빈 <think></think>를 프리필 → 모델은 순수 JSON만 생성.
+     *  (학습/eval 분포와 일치: enable_thinking=False 렌더. Qwen3 전용 — 0.5B는 미사용.) */
     fun buildPrompt(channel: String, receivedAt: String, sender: String,
                     message: String, thread: List<ThreadTurn> = emptyList()): String {
         val userBlock = buildUserBlock(channel, receivedAt, sender, message, thread)
         return buildString {
             append("<|im_start|>system\n").append(SYSTEM_PROMPT).append("<|im_end|>\n")
             append("<|im_start|>user\n").append(userBlock).append("<|im_end|>\n")
-            append("<|im_start|>assistant\n")
+            append("<|im_start|>assistant\n<think>\n\n</think>\n\n")
         }
     }
 
