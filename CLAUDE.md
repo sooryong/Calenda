@@ -185,7 +185,7 @@ calendar-agent/
 
 - **Python 3.10~3.14**: 데이터 생성·평가 단계는 3.14에서도 잘 동작.
   - **학습 단계**(`pip install -e .[train]`)에서 PyTorch/bitsandbytes wheel 못 찾으면 Python 3.11을 별도 설치 후 그쪽 venv로 학습만 수행.
-- OS: Windows 11 (D:\calendar-agent에 설치). 학습 시 CUDA GPU 권장.
+- OS: Windows 11 (D:\calenda에 설치). 학습 시 CUDA GPU 권장.
 - 의존성은 단계별 분리:
   - `pip install -e .` — 데이터 생성·평가 (가벼움)
   - `pip install -e .[train]` — 학습 라이브러리 (torch, peft, trl, transformers)
