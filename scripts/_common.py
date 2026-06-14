@@ -220,15 +220,10 @@ def _split_sender(sender: str) -> tuple:
 
 
 def compose_title(base_title, attendees=None, organizer=None, sender=None, channel=None, location=None) -> str:
-    """캘린더 표시 제목 조합. 모델은 활동(base_title)만 뽑고, 누구와·장소·출처(소속)는 앱이 붙인다.
-    형식: '[참석자와/과] 활동 [@장소] [발신인(소속)]'. 참석자 여럿은 '·'(공백 없음)로 연결.
-    구분자: @=장소, []=발신인, ()=발신인 소속.
-    장소(물리·온라인 공통)는 ' @{장소}'로 활동 뒤에 합성(이미 제목에 있으면 생략). location 필드도 별도 보존.
-    규칙:
-      · 발신자 == 상대방(참석자): 접두 빼고 '활동 [이름(소속)]'.  예 '화상미팅 [정원구(페테리안)]'.
-      · 참석자 ≠ 발신자: '참석자와 활동 [발신인]'.               예 '민지와 저녁식사 [박팀장]'.
-      · 참석자 2명↑: '이서연·박도윤과 회의 [...]'.  그룹(3명↑): 접두 생략, '동기회 [...]'.
-      · 소속 없으면 '활동 [이름]'. 기관 발신은 '활동 [기관]'. 전화/이메일/'나'는 출처 생략."""
+    """캘린더 표시 제목 = 모델의 자연 제목(메시지에서 시간만 제외·최대한 보존) + 발신인 태그.
+    모델 title에 활동·참석자·장소가 이미 보존되므로, 앱은 발신인만 ' [발신인(소속)]'로 부착한다.
+    (장소·참석자 합성 안 함 — 제목에 이미 있음. location/attendees 필드는 별도 보존.)
+    형식: '제목 [발신인(소속)]'. 사람 발신='제목 [이름(소속)]', 기관='제목 [기관]', 전화/이메일/'나'=출처 생략."""
     title = (base_title or "일정").strip()
 
     # 발신자 이름/소속 분리 (사람 발신만; 기관/기계/'나'는 제외)
@@ -236,20 +231,7 @@ def compose_title(base_title, attendees=None, organizer=None, sender=None, chann
     if sender and sender not in ("나", "Me", "me") and not _is_machine_sender(sender):
         sname, saffil = _split_sender(sender)
 
-    # '누구와' 접두 = 발신자 본인이 아닌 참석자만. 그룹 판정은 (발신자 제외 전) 전체 인원 기준.
-    all_who = [a for a in (attendees or []) if a and a not in title]
-    is_group = len(all_who) >= 3
-    who = [a for a in all_who if not (sname and (a == sname or a in sname or sname in a))]
-    if who and not is_group:
-        joined = "·".join(who)                              # 참석자 여럿 → 공백 없는 가운뎃점
-        title = f"{joined}{_gwa(joined)} {title}"
-
-    # 장소(물리·온라인 공통) → 활동 뒤 '@{장소}'. 이미 제목에 있으면 생략.
-    loc = (location or "").strip()
-    if loc and loc not in title:
-        title = f"{title} @{loc}"
-
-    # 출처(발신인[소속]) → 활동 뒤 '[발신인(소속)]'
+    # 출처(발신인[소속]) → 제목 뒤 '[발신인(소속)]' (장소·참석자는 제목에 이미 보존 → 합성 안 함)
     inner = None
     if sname:
         if organizer and organizer not in sname:

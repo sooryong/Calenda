@@ -185,18 +185,8 @@ object DateResolver {
             val p = splitSender(sender); sname = p.first; saffil = p.second
         }
         val sn = sname
-        // '누구와' 접두 = 발신자 본인 아닌 참석자만; 그룹 판정은 (발신자 제외 전) 전체 인원 기준
-        val allWho = attendees.filter { it.isNotBlank() && !title.contains(it) }
-        val isGroup = allWho.size >= 3
-        val who = allWho.filter { a -> sn == null || !(a == sn || sn.contains(a) || a.contains(sn)) }
-        if (who.isNotEmpty() && !isGroup) {
-            val joined = who.joinToString("·")                // 참석자 여럿 → 공백 없는 가운뎃점
-            title = "$joined${gwa(joined)} $title"
-        }
-        // 장소(물리·온라인 공통) → 활동 뒤 '@{장소}'. 이미 제목에 있으면 생략.
-        val loc = location?.trim()
-        if (!loc.isNullOrEmpty() && !title.contains(loc)) title = "$title @$loc"
-        // 출처(발신인[소속]) → 활동 뒤 '[발신인(소속)]'
+        // 장소·참석자는 제목에 이미 보존(모델이 시간만 제외하고 자연제목 출력) → 합성 안 함.
+        // 출처(발신인[소속]) → 제목 뒤 '[발신인(소속)]'
         var inner: String? = null
         if (sn != null) {
             val org = organizer
