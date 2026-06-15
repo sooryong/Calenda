@@ -4,7 +4,20 @@
 
 ---
 
-## 0-C1. ★★ c1 — criterion 기반 리베이스 1000셋 (2026-06-16)
+## 0-C2. ★★★ c2 — has_schedule 3-way (yes/pending/no) + confidence 폐지 (2026-06-16)
+
+**설계 전환:** binary has_schedule → **3-분류** `has_schedule: "yes"|"pending"|"no"`. 어려운 경계(기관 행사 안내 vs 내가 갈 것)를 강제 binary로 틀리는 대신 **pending(예비)으로 사용자에 위임**. 0.6B의 불안정한 confidence 보정 대신 이산 분류 → 안정적. confidence 폐지(= date/time 지름길 편향 원천).
+- **yes**=확정(회의·예약·면접 — 자동등록) · **pending**=공고·안내·초대·미확정 제안(예비) · **no**=거래·통보·광고.
+- 앱 라우팅: yes→자동, pending→예비(PENDING), no→무시. (ScheduleExtractor가 status 분기 — 재배포는 모델 검증 후, task §앱)
+- ✅ **코드**: `schema.md`·`schedule_criterion.md`·시스템프롬프트(+요일→절대날짜 계산금지=#8 누수수정)·`eval_model`(detected=yes+pending·class_acc)·`_common`/`validate_train`/`audit_schedule` 전부 3-way, confidence 제거.
+- ✅ **데이터**: 원본 2133(events 보존)을 Haiku 3-way 재라벨 → 풀 yes 805/pending 215/no 1099. `build_c2_assemble` → **train.jsonl 915**(yes 350·pending 215·no 350, no비 38%). 날짜누수 4 제외.
+- ✅ **골든**: ⚠ **API 사용한도 소진(7/1 회복)** 으로 Haiku 불가 → **규칙기반 3-way 매핑**(54건: yes 14·pending 17·no 23, 검토 완료). r34 골든(events 보존)에서 매핑.
+- ⏳ **다음: config c2(epochs=3) → push → Kaggle 학습 → 3-way 평가.** ★관전: ① pending 클래스가 학습되나(215로 충분?) ② 거래/광고 no로 가나(과발화↓) ③ yes/pending 구분(class_acc).
+- 🟡 후속: pending 보강(c3, API 회복 후), 앱 status 라우팅 재배포, generator.md 새 스키마.
+
+---
+
+## 0-C1. (이전) c1 — criterion 기반 리베이스 1000셋 (2026-06-16)
 
 **근본 진단:** has_schedule 과발화의 원인 = **"날짜·시각=일정" 지름길**. 학습셋 P(양성|날짜+시각)=**0.74**(음성의 date/time 보유 23%뿐). 이건 **가이드가 만든 것** — schema가 "날짜+시간+활동=일정 확정"이라 라벨러가 그렇게 찍음. r34에서 음성만 더 부어도 안 통한 이유(가이드가 반대로 당김).
 

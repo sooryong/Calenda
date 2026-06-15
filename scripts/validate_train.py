@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import resolve_when  # 앱/평가와 동일 해석
 
 EVENT_KEYS = {"title", "date", "time", "end_time", "all_day", "location",
-              "attendees", "organizer", "description", "recurrence", "confidence"}
+              "attendees", "organizer", "description", "recurrence"}
+SCHEDULE_VALS = {"yes", "pending", "no"}
 MARKERS = {None, "오전", "오후", "저녁", "밤", "낮", "아침", "새벽", "정오", "자정"}
 
 
@@ -35,12 +36,13 @@ def check_row(i: int, r: dict) -> list[tuple[str, str]]:
         bad("GOLD_NOT_DICT"); return out
     has = gold.get("has_schedule")
     evs = gold.get("events", [])
-    if not isinstance(has, bool):
-        bad("HAS_SCHEDULE_NOT_BOOL", repr(has))
+    if has not in SCHEDULE_VALS:
+        bad("HAS_SCHEDULE_BAD", repr(has))
     if not isinstance(evs, list):
         bad("EVENTS_NOT_LIST"); return out
-    # 일관성: has_schedule ⟺ events 존재
-    if bool(has) != (len(evs) > 0):
+    # 일관성: detected(yes/pending) ⟺ events 존재
+    detected = has in ("yes", "pending")
+    if detected != (len(evs) > 0):
         bad("HAS_EVENTS_MISMATCH", f"has={has} n_events={len(evs)}")
 
     recv = r.get("received_at")
@@ -83,10 +85,6 @@ def check_row(i: int, r: dict) -> list[tuple[str, str]]:
                 # 규약: 이미 13~23시인데 오전/오후 마커 → 모순/잉여
                 if isinstance(h, int) and h >= 13 and mk in ("오전", "오후", "저녁", "밤", "낮", "아침", "새벽"):
                     bad("MARKER_ON_24H", f"hour={h} marker={mk}")
-        # confidence
-        c = ev.get("confidence")
-        if not isinstance(c, (int, float)) or not (0 <= c <= 1):
-            bad("CONFIDENCE_RANGE", repr(c))
         # attendees 형식
         at = ev.get("attendees")
         if at is not None and not isinstance(at, list):
@@ -107,7 +105,7 @@ def main():
     flagged = []
     attendee_freq = Counter()
     msg_seen = Counter()
-    n_pos = n_neg = 0
+    cls_count = Counter()
 
     for i, r in enumerate(rows):
         issues = check_row(i, r)
@@ -117,17 +115,15 @@ def main():
                             "issues": issues, "message": (r.get("message") or "")[:80],
                             "gold": r.get("gold")})
         gold = r.get("gold", {})
-        if gold.get("has_schedule"):
-            n_pos += 1
-        else:
-            n_neg += 1
+        cls_count[gold.get("has_schedule")] += 1
         for ev in gold.get("events", []) or []:
             for a in ev.get("attendees") or []:
                 attendee_freq[a] += 1
         msg_seen[(r.get("message") or "").strip()] += 1
 
     print(f"=== 전수 검증: {n}행 ===")
-    print(f"음성비: {n_neg}/{n} = {n_neg/n:.1%}  (양성 {n_pos})")
+    print(f"3-way: yes {cls_count['yes']} · pending {cls_count['pending']} · no {cls_count['no']} "
+          f"(no비 {cls_count['no']/n:.1%})")
     dups = {m: c for m, c in msg_seen.items() if c > 1 and m}
     print(f"중복 메시지: {len(dups)}종 (총 {sum(c-1 for c in dups.values())}건 잉여)")
     print(f"결함 보유 행: {len(flagged)}/{n} = {len(flagged)/n:.1%}")
