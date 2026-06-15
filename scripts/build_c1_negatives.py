@@ -1,4 +1,4 @@
-"""r35 음성 생성 (Haiku, criterion 기반) — 멀티턴 미확정 + 단일 통보.
+"""c1 음성 생성 (Haiku, criterion 기반) — 멀티턴 미확정 + 단일 통보.
 
 음성 gold는 {has_schedule:false, events:[]}로 스키마 무관 → 생성기를 Haiku로 직접 구동(stale generator.md 우회).
 생성 후 scripts/audit_schedule.py로 이중판정(evaluator) → Haiku도 음성이라 확인한 것만 채택.
@@ -8,7 +8,7 @@
   - 단일 통보 음성: 날짜·시각 품은 비-일정(카드승인·결제·적립·인증·영업연락·정기결제).
 
 사용:
-    python scripts/build_r35_negatives.py --mt 160 --single 60 --out data/processed/_r35_neg.jsonl
+    python scripts/build_c1_negatives.py --mt 160 --single 60 --out data/processed/_c1_neg.jsonl
 """
 from __future__ import annotations
 import argparse, json, sys
@@ -76,16 +76,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mt", type=int, default=160, help="멀티턴 음성 목표")
     ap.add_argument("--single", type=int, default=60, help="단일 통보 음성 목표")
-    ap.add_argument("--out", default="data/processed/_r35_neg.jsonl")
+    ap.add_argument("--out", default="data/processed/_c1_neg.jsonl")
     ap.add_argument("--workers", type=int, default=6)
     args = ap.parse_args()
 
     jobs = []  # (system, n, hint, sid_prefix)
     B = 8  # 배치당 생성 수
     for i in range((args.mt + B - 1) // B):
-        jobs.append((MT_SYSTEM, min(B, args.mt - i * B), f"멀티턴 배치{i}", "r35_mtneg"))
+        jobs.append((MT_SYSTEM, min(B, args.mt - i * B), f"멀티턴 배치{i}", "c1_mtneg"))
     for i in range((args.single + B - 1) // B):
-        jobs.append((SINGLE_SYSTEM, min(B, args.single - i * B), f"통보 배치{i}", "r35_singleneg"))
+        jobs.append((SINGLE_SYSTEM, min(B, args.single - i * B), f"통보 배치{i}", "c1_singleneg"))
 
     out_rows = []
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
@@ -100,8 +100,8 @@ def main():
             done += 1
             print(f"  배치 {done}/{len(jobs)} 누적 {len(out_rows)}")
 
-    mt = sum(1 for r in out_rows if r["scenario_id"].startswith("r35_mtneg"))
-    sg = sum(1 for r in out_rows if r["scenario_id"].startswith("r35_singleneg"))
+    mt = sum(1 for r in out_rows if r["scenario_id"].startswith("c1_mtneg"))
+    sg = sum(1 for r in out_rows if r["scenario_id"].startswith("c1_singleneg"))
     Path(args.out).write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in out_rows) + "\n", encoding="utf-8")
     print(f"\n생성 {len(out_rows)} (멀티턴 {mt} · 단일통보 {sg}) → {args.out}")
     print("→ 다음: python scripts/audit_schedule.py --in {out} 로 이중검증(전부 음성 확인)".format(out=args.out))

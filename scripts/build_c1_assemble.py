@@ -1,12 +1,12 @@
-"""r35 1000셋 조립 — 재감사 풀(재사용) + 생성 멀티턴 음성.
+"""c1 1000셋 조립 — 재감사 풀(재사용) + 생성 멀티턴 음성.
 
 구성: A 단일 600(양300/음300) + B 멀티 400(양183~200/음 나머지) = 1000, 음성 ~50%.
 음성은 날짜·시각 보유율을 높여 'date/time=일정' 지름길 차단.
 audit 메타(_label_reason/_audit_flag/_qa)는 학습본에서 제거.
 
 사용:
-    python scripts/build_r35_assemble.py            # dry-run(구성·균형 리포트)
-    python scripts/build_r35_assemble.py --apply    # data/processed/train.jsonl 교체
+    python scripts/build_c1_assemble.py            # dry-run(구성·균형 리포트)
+    python scripts/build_c1_assemble.py --apply    # data/processed/train.jsonl 교체
 """
 from __future__ import annotations
 import argparse, json, re, sys
@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import resolve_when
 
 POOL = Path("data/processed/_audited.jsonl")
-GEN = Path("data/processed/_r35_mtneg_checked.jsonl")
+GEN = Path("data/processed/_c1_mtneg_checked.jsonl")
 OUT = Path("data/processed/train.jsonl")
 
 # 목표
