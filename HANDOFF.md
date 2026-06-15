@@ -29,6 +29,8 @@
   - **실패 4건 골든 감사 = 라벨 오류 0건**(전부 적합): g01(정확, 모델 경쟁날짜 오추출 1/28→2/2) · g17(정확, 사후 자료공유 과발화) · **g10**(양성 유지: 마감안내, conf 0.8<앱임계 0.85 → **PENDING/예비=사용자 확정 필요**, 사용자 컨벤션 확정) · **ad_000**(음성 유지: 미수락 골프조인 요청알림, 등록 안 함, 사용자 컨벤션 확정).
 - ✅ **양자화 완료·Q8_0 무손실 검증**(golden 50): **Q8_0 = FP16 완전 일치**(final 0.944 / time 0.920 / loc 0.858, 실패 4건 동일). **Q4_K_M 회귀**(final 0.869 / time 0.760 / 과발화 2→6 / spec 0.727) — r31·r32 패턴 재확인. → **배포본 = `r33-qwen3-0.6b.Q8_0.gguf`** (Q4 금지). [[direction-ondevice-qwen3-06b]]
 - ⏳ **다음 액션(사용자):** Q8_0 gguf **폰 배포**(adb push→md5 대조→옛 슬롯 `.r32-bak`→교체→force-stop→앱 1회 열기) → **실사용 검증**(대구TP 제목/장소·무시간 시각환각). 모델명 표기 `R33-Q3-0.6B-Q8`. 절차 §4. [[feedback_reopen_app_after_gguf_swap]]
+  - **배포 파일**: `r33-qwen3-0.6b.Q8_0.gguf` (767.5MB, **md5 `3755763b938d8f2d01fbc7486e5cda1b`**), HF `sooryong9885/Calenda-Qwen3-0.6B/r33-qwen3-0.6b/`. git_commit 1763255(r33 데이터)로 학습 확인.
+  - **앱 슬롯**(고정명): `ModelStore.FILE_NAME = calendar.Q4_K_M.gguf` @ `getExternalFilesDir` = `/sdcard/Android/data/com.calenda/files/calendar.Q4_K_M.gguf` (슬롯명은 Q4지만 콘텐츠는 Q8_0 — r32와 동일). 모델 버전은 gguf 메타(`general.name=r33-qwen3-0.6b`)에서 자동 표시.
 
 ### r34 백로그 (r33 실패 4건·사용자 컨벤션 기반)
 1. **마감형 종일 recall**(g10): 마감 안내("신청 ~날짜")를 **양성 detect + moderate conf(~0.78)** → 앱 예비(PENDING)로. 현재 모델 미탐. 소량 양성 보강.
