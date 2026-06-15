@@ -24,7 +24,16 @@
 - ✅ `scripts/apply_r33.py --apply` → train.jsonl **2090행**(양성 1108·음성 982=**47.0%neg**), resolve 0실패. validate_train: 결함 0.1%, attendee 분포 고름(최다 2.1%, 포이즌닝 無).
 - ✅ `prompts/schema.md` 갱신: time:null/location 제목복제 금지/attendees [] 명시. `configs/train_qwen3_0_6b.yaml` run_name·output_dir r32→**r33**.
 - ✅ **Kaggle 노트북 운영성 보강**(`calendar_kaggle.ipynb`): 클론 셀이 `run_name`·`r33_` 하드케이스 건수 자동 표시(push 누락 즉시 감지) + 라운드 설정 셀이 HF_TOKEN env 설정(rate-limit 경고 제거). 상세 §3.
-- ⏳ **다음 액션(사용자):** `git push origin main` → Kaggle r33 학습(`configs/train_qwen3_0_6b.yaml`) → 로컬 merge/eval/양자화(**Q8_0**) → 배포. [[train-jsonl-append-workflow]] [[feedback_push_before_cloud_training]]
+- ✅ **r33 학습·평가 완료 (golden 50)**: final **0.9437**(r32 0.9446 ≈ 동급) · time_match **0.92**(KPI 유지) · TP time_acc 0.963 · **TP title 0.963**(건강) · location_f1 0.858 · recall 0.964 / spec 0.909(과발화 2·미탐 1, r32 동일 프로파일).
+  - title_f1 헤드라인 0.920(r32 0.947↓)은 **제목 회귀 아님** — 실패 4건 중 제목실패 0, detection 실패 3건(미탐1·과발화2)이 결합지표로 title=0 동반계산된 아티팩트. TP title 0.963이 제목 건강 증명.
+  - **실패 4건 골든 감사 = 라벨 오류 0건**(전부 적합): g01(정확, 모델 경쟁날짜 오추출 1/28→2/2) · g17(정확, 사후 자료공유 과발화) · **g10**(양성 유지: 마감안내, conf 0.8<앱임계 0.85 → **PENDING/예비=사용자 확정 필요**, 사용자 컨벤션 확정) · **ad_000**(음성 유지: 미수락 골프조인 요청알림, 등록 안 함, 사용자 컨벤션 확정).
+- ⏳ **다음 액션(사용자):** 로컬 merge/eval(완료) → **양자화(Q8_0) → 폰 배포 → 실사용 검증**(대구TP 제목/장소·무시간 시각환각). r33은 골든 동급+필드규율 확보로 배포 적격. [[train-jsonl-append-workflow]]
+
+### r34 백로그 (r33 실패 4건·사용자 컨벤션 기반)
+1. **마감형 종일 recall**(g10): 마감 안내("신청 ~날짜")를 **양성 detect + moderate conf(~0.78)** → 앱 예비(PENDING)로. 현재 모델 미탐. 소량 양성 보강.
+2. **경쟁 날짜 disambiguation**(g01): 본문에 이벤트일(1/28)과 맥락 월("2월 중") 병기 시 **명시 이벤트일 우선**. 장문 격식메일 date 정확도.
+3. **장문 격식메일 필드 환각**(g01): location/description을 본문 구절에서 잘못 긁음 — r33이 짧은 메시지는 잡았으나 장문은 천장.
+4. **과발화 2 음성**: 사후 자료공유 격식메일(g17)·미수락 서비스 초대알림(ad_000) — 소량 음성 또는 앱 휴리스틱 우회(0.6B 천장 가능).
 
 ---
 
