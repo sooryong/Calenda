@@ -8,6 +8,11 @@
 from __future__ import annotations
 
 import os
+import warnings
+
+# DDP barrier()의 device_id 미지정 경고 억제 — HF Trainer/accelerate 내부 init_process_group에서
+# 나오는 정보성 경고(학습엔 무영향, 각 프로세스가 LOCAL_RANK GPU 사용). 로그만 깨끗이.
+warnings.filterwarnings("ignore", message=r".*barrier\(\).*device_id.*")
 
 # 단일 실행(python)에서만 단일 GPU 강제 — 0.5B는 2-GPU DataParallel/auto-shard가 느림.
 # torchrun(DDP)으로 띄우면 LOCAL_RANK가 설정되므로 건드리지 않음(각 프로세스가 자기 GPU 사용 → 진짜 병렬).
