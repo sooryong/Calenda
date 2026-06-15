@@ -288,7 +288,6 @@ def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
         "organizer": event.get("organizer"),
         "description": event.get("description"),
         "recurrence": event.get("recurrence"),
-        "confidence": event.get("confidence"),
     }
 
 

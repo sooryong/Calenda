@@ -157,13 +157,27 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     recall_hit = spec_hit = overfire = missed = 0
     tp_n = 0
     tp_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
+    # 3-way (yes/pending/no): detected = yes+pending. class_correct = yes/pending 구분까지 맞춤.
+    def _cls(v):
+        if v is True:
+            return "yes"
+        if v in (False, None):
+            return "no"
+        s = str(v).strip().lower()
+        return s if s in ("yes", "pending", "no") else "no"
+
+    def _det(v):
+        return _cls(v) in ("yes", "pending")
+
+    class_both = class_correct = 0  # 양쪽 detected일 때 yes/pending 일치
 
     for sample in tqdm(samples, desc="eval"):
         raw = infer_fn(sample)
         pred = safe_json_loads(raw)
 
         gold = sample["gold"]
-        g_has = bool(gold.get("has_schedule"))
+        g_cls = _cls(gold.get("has_schedule"))
+        g_has = g_cls in ("yes", "pending")
         if g_has:
             pos_total += 1
         else:
@@ -178,12 +192,16 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
 
         json_valid += 1
 
-        p_has = bool(pred.get("has_schedule"))
-        if p_has == g_has:
-            has_sched_correct += 1
-        # 검출 분해
+        p_cls = _cls(pred.get("has_schedule"))
+        p_has = p_cls in ("yes", "pending")
+        if p_cls == g_cls:
+            has_sched_correct += 1                 # 3-way 정확 매치
+        # 검출 분해 (detected = yes+pending)
         if g_has and p_has:
             recall_hit += 1
+            class_both += 1
+            if p_cls == g_cls:
+                class_correct += 1                 # yes/pending 구분까지 맞춤
         elif (not g_has) and (not p_has):
             spec_hit += 1
         elif (not g_has) and p_has:
@@ -232,10 +250,11 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     metrics["detection"] = {
         "n_pos": pos_total,
         "n_neg": neg_total,
-        "recall_pos": recall_hit / max(1, pos_total),       # 진짜 일정을 잡는 비율
-        "specificity_neg": spec_hit / max(1, neg_total),    # 일정 아닌 걸 거르는 비율(과발화의 역)
-        "overfire_count": overfire,                          # 음성→양성 오발화
-        "missed_count": missed,                              # 양성→음성 누락
+        "recall_pos": recall_hit / max(1, pos_total),       # 일정(yes+pending) 검출 비율
+        "specificity_neg": spec_hit / max(1, neg_total),    # no를 no로 거르는 비율(과발화의 역)
+        "overfire_count": overfire,                          # no→yes/pending 오발화
+        "missed_count": missed,                              # yes/pending→no 누락
+        "class_acc": class_correct / max(1, class_both),    # 검출된 것 중 yes/pending 구분 정확도
     }
     metrics["extraction_on_true_positives"] = {              # 올바로 검출된 양성에 한한 추출 품질
         "n": tp_n,
