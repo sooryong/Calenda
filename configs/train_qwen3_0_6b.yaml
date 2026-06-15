@@ -16,7 +16,7 @@ eval_golden: data/eval/golden.jsonl   # r27 평가셋과 동일 50건(real_golde
 per_device_train_batch_size: 2         # 큰 vocab logits OOM 회피. 유효배치는 accum으로 유지
 per_device_eval_batch_size: 2
 gradient_accumulation_steps: 16        # 유효 batch 32 (2×16)
-num_train_epochs: 2         # r34: 3→2 (학습 ~33%↓, load_best_model_at_end로 best epoch 선택, 0.6B LoRA 2epoch 충분)
+num_train_epochs: 3         # r34: 2→3 복구 (2epoch는 언더핏 — 동일 양성에서 recall·time 회귀 확인)
 learning_rate: 2.0e-4
 lr_scheduler_type: cosine
 warmup_ratio: 0.05
