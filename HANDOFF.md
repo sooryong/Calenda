@@ -4,9 +4,12 @@
 
 ---
 
-## 0. 현재 배포본 — r32 Qwen3-0.6B / Q8_0 (2026-06-14)
+## 0. 현재 배포본 — r33 Qwen3-0.6B / Q8_0 (2026-06-15)
 
-- ✅ **온디바이스 Qwen3-0.6B, Q8_0 배포.** Q4_K_M은 r31·r32에서 회귀(r32 Q4=0.836, 과발화8) → **Q8_0 고정**. 어댑터 HF `sooryong9885/Calenda-Qwen3-0.6B`. 학습=빈 `<think></think>` non-thinking.
+- ✅ **r33 배포 완료(2026-06-15).** `r33-qwen3-0.6b.Q8_0.gguf`(767MiB, md5 `3755763b938d8f2d01fbc7486e5cda1b`) 폰 푸시·**md5 대조 일치**·force-stop·앱 재실행(수집 재가동). 구 r32 슬롯은 `.r32-bak` 백업. **⚠ 발견: 직전 r32 슬롯이 639MB로 truncated**(767MB여야 정상 — 무선 푸시 끊김으로 손상된 채 운용됐을 가능성). r33은 full Q8_0 무결성 확인. **실사용 검증 대기**(대구TP 제목/장소·무시간 시각환각).
+  - r33 평가(golden 50): final **0.9437**(=Q8_0=FP16, r32 0.9446 동급) · time **0.92** · TP title 0.963 · location_f1 0.858 · 과발화 2·미탐 1. Q4_K_M은 회귀(0.869)라 배포 금지. train.jsonl **2090**(필드 재라벨 + 환각억제 하드케이스 38). [[train-jsonl-append-workflow]]
+- ✅ **r33 = 필드 정합 + 환각 억제** (r32 자연제목 보존 위에): location 채움전용·제목복제 금지, attendees 본문 grounded만, 무시간→`time:null`. 상세 §0-A.
+- ✅ **온디바이스 Qwen3-0.6B, Q8_0 배포.** Q4_K_M은 r31·r32·r33 모두 회귀 → **Q8_0 고정**. 어댑터 HF `sooryong9885/Calenda-Qwen3-0.6B`. 학습=빈 `<think></think>` non-thinking.
 - ✅ **제목 설계 = 자연제목 보존** (r31 "AWS 교육팀과 줌회의"→"AWS 교육" 분해실패 후 전환). 모델 title=메시지 일정제목을 **시간만 제외, 최대한 보존**(활동-only 분해 폐기). compose_title은 **발신인 태그만**(`{제목} [발신인(소속)]`). [[title-natural-preservation]]
   - r32 평가: final **0.9446**, **title_f1 0.947**(r31 0.907→), TP title **0.977**, recall 0.964, time 0.92, 과발화 2. 데이터 train.jsonl **2052**(Haiku 전체 재라벨 681 + golden 15 + r32 조직팀 하드케이스 23). [[train-jsonl-append-workflow]]
   - 실사용 검증: "AWS 교육팀 줌 미팅" → 제목 완전 보존 ✅.
@@ -28,7 +31,7 @@
   - title_f1 헤드라인 0.920(r32 0.947↓)은 **제목 회귀 아님** — 실패 4건 중 제목실패 0, detection 실패 3건(미탐1·과발화2)이 결합지표로 title=0 동반계산된 아티팩트. TP title 0.963이 제목 건강 증명.
   - **실패 4건 골든 감사 = 라벨 오류 0건**(전부 적합): g01(정확, 모델 경쟁날짜 오추출 1/28→2/2) · g17(정확, 사후 자료공유 과발화) · **g10**(양성 유지: 마감안내, conf 0.8<앱임계 0.85 → **PENDING/예비=사용자 확정 필요**, 사용자 컨벤션 확정) · **ad_000**(음성 유지: 미수락 골프조인 요청알림, 등록 안 함, 사용자 컨벤션 확정).
 - ✅ **양자화 완료·Q8_0 무손실 검증**(golden 50): **Q8_0 = FP16 완전 일치**(final 0.944 / time 0.920 / loc 0.858, 실패 4건 동일). **Q4_K_M 회귀**(final 0.869 / time 0.760 / 과발화 2→6 / spec 0.727) — r31·r32 패턴 재확인. → **배포본 = `r33-qwen3-0.6b.Q8_0.gguf`** (Q4 금지). [[direction-ondevice-qwen3-06b]]
-- ⏳ **다음 액션(사용자):** Q8_0 gguf **폰 배포**(adb push→md5 대조→옛 슬롯 `.r32-bak`→교체→force-stop→앱 1회 열기) → **실사용 검증**(대구TP 제목/장소·무시간 시각환각). 모델명 표기 `R33-Q3-0.6B-Q8`. 절차 §4. [[feedback_reopen_app_after_gguf_swap]]
+- ✅ **폰 배포 완료(2026-06-15):** adb(192.168.1.23:39277) push→**md5 일치**→`.r32-bak` 백업→force-stop→앱 재실행. → ⏳ **실사용 검증 대기**(대구TP 제목/장소·무시간 시각환각). 모델명 표기 `R33-Q3-0.6B-Q8`. [[feedback_reopen_app_after_gguf_swap]]
   - **배포 파일**: `r33-qwen3-0.6b.Q8_0.gguf` (767.5MB, **md5 `3755763b938d8f2d01fbc7486e5cda1b`**), HF `sooryong9885/Calenda-Qwen3-0.6B/r33-qwen3-0.6b/`. git_commit 1763255(r33 데이터)로 학습 확인.
   - **앱 슬롯**(고정명): `ModelStore.FILE_NAME = calendar.Q4_K_M.gguf` @ `getExternalFilesDir` = `/sdcard/Android/data/com.calenda/files/calendar.Q4_K_M.gguf` (슬롯명은 Q4지만 콘텐츠는 Q8_0 — r32와 동일). 모델 버전은 gguf 메타(`general.name=r33-qwen3-0.6b`)에서 자동 표시.
 
