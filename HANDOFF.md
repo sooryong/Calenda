@@ -16,7 +16,18 @@
 
 ---
 
-## 0-B. ★ r33 데이터 방향 (자연제목 유지 + 필드 정합 + 환각 억제) — 내일 실행
+## 0-A. ★ r33 데이터 준비 완료 (2026-06-15) — push→Kaggle 학습만 남음
+
+- ✅ **필드 정합 재라벨** `scripts/relabel_fields_haiku.py` (Haiku) — 양성 gold의 location·attendees 재생성. **보수적 가드**: location=채움 전용(기존 장소·공항 보존, 빈칸만 grounded 값으로), attendees=(기존∪Haiku) 중 **메시지 본문 grounded 이름만**(발신자 자신·미근거 제거). title/date/time 등 불가침. train+golden 동일 적용(라벨 규약 일치). 검증: 제거된 attendee 214건 중 본문-grounded 오제거 **0건**.
+  - train: location 826→**869**, attendees 311→**189행**(미근거 정리), location==title은 전부 실제 장소(연남동 카페·미용실류). golden: location 5채움·attendee 2제거(정원구/김용안=발신자, compose_title 태그로 표시 유지).
+- ✅ **환각 억제 하드케이스** `scripts/build_r33_hardcases.py` → `_r33_add.jsonl` **38건**: 무시간→`time:null`(18, KPI직결 시각환각 억제) · 무장소→`location:null`(12, 제목복제 억제) · 무근거 trailing잡담→`description:null`(8). resolve 0실패.
+- ✅ `scripts/apply_r33.py --apply` → train.jsonl **2090행**(양성 1108·음성 982=**47.0%neg**), resolve 0실패. validate_train: 결함 0.1%, attendee 분포 고름(최다 2.1%, 포이즌닝 無).
+- ✅ `prompts/schema.md` 갱신: time:null/location 제목복제 금지/attendees [] 명시. `configs/train_qwen3_0_6b.yaml` run_name·output_dir r32→**r33**.
+- ⏳ **다음 액션(사용자):** `git push origin main` → Kaggle r33 학습(`configs/train_qwen3_0_6b.yaml`) → 로컬 merge/eval/양자화(**Q8_0**) → 배포. [[train-jsonl-append-workflow]] [[feedback_push_before_cloud_training]]
+
+---
+
+## 0-B. (실행됨) r33 데이터 방향 (자연제목 유지 + 필드 정합 + 환각 억제)
 
 **진단(r32 실사용):** 제목 자연보존은 성공. 그러나 모델이 **보조 필드를 안 채우거나 잘못 채움**:
 - `location` 비움(제목에만 보존) → 앱 새 필드배치(장소→설명/지도)가 빈 채. 또는 **제목을 location에 복제**(대구TP간담회 케이스, 앱 가드로 임시방어).
