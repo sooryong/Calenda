@@ -176,7 +176,7 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
         pred = safe_json_loads(raw)
 
         gold = sample["gold"]
-        g_cls = _cls(gold.get("has_schedule"))
+        g_cls = _cls(gold.get("schedule_status"))
         g_has = g_cls in ("yes", "pending")
         if g_has:
             pos_total += 1
@@ -192,7 +192,7 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
 
         json_valid += 1
 
-        p_cls = _cls(pred.get("has_schedule"))
+        p_cls = _cls(pred.get("schedule_status"))
         p_has = p_cls in ("yes", "pending")
         if p_cls == g_cls:
             has_sched_correct += 1                 # 3-way 정확 매치
@@ -231,7 +231,7 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     metrics = {
         "n": n,
         "json_valid_rate": json_valid / n,
-        "has_schedule_acc": has_sched_correct / n,
+        "schedule_status_acc": has_sched_correct / n,
         "title_f1_avg": field_sum["title_f1"] / n,
         "time_match_rate": field_sum["time_f1"] / n,
         "location_f1_avg": field_sum["loc_f1"] / n,
@@ -239,7 +239,7 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     }
     metrics["final_score"] = (
         0.30 * metrics["json_valid_rate"]
-        + 0.25 * metrics["has_schedule_acc"]
+        + 0.25 * metrics["schedule_status_acc"]
         + 0.35 * (
             (metrics["title_f1_avg"] + metrics["time_match_rate"] + metrics["location_f1_avg"]) / 3
         )

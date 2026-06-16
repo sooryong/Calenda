@@ -1,7 +1,7 @@
 # 일정 분류 기준 (단일 SOT — generator·evaluator·golden 공용)
 
-> `has_schedule` 분류의 **유일한 기준**. generator(생성)·evaluator(QA)·golden(라벨)이 모두 따른다.
-> **3-분류**: `has_schedule: "yes" | "pending" | "no"`. A(단일 메시지)·B(멀티턴 대화)는 다른 잣대를 쓴다.
+> `schedule_status` 분류의 **유일한 기준**. generator(생성)·evaluator(QA)·golden(라벨)이 모두 따른다.
+> **3-분류**: `schedule_status: "yes" | "pending" | "no"`. A(단일 메시지)·B(멀티턴 대화)는 다른 잣대를 쓴다.
 
 ---
 

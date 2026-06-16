@@ -34,7 +34,7 @@ def check_row(i: int, r: dict) -> list[tuple[str, str]]:
     gold = r.get("gold", {})
     if not isinstance(gold, dict):
         bad("GOLD_NOT_DICT"); return out
-    has = gold.get("has_schedule")
+    has = gold.get("schedule_status")
     evs = gold.get("events", [])
     if has not in SCHEDULE_VALS:
         bad("HAS_SCHEDULE_BAD", repr(has))
@@ -115,7 +115,7 @@ def main():
                             "issues": issues, "message": (r.get("message") or "")[:80],
                             "gold": r.get("gold")})
         gold = r.get("gold", {})
-        cls_count[gold.get("has_schedule")] += 1
+        cls_count[gold.get("schedule_status")] += 1
         for ev in gold.get("events", []) or []:
             for a in ev.get("attendees") or []:
                 attendee_freq[a] += 1

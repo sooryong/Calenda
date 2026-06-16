@@ -3,7 +3,7 @@
 - 오류(bool 라벨)·flag(음성→pending 추출필요) 제외.
 - 날짜 누수 제외: 멀티턴 yes/pending인데 gold date가 절대(YYYY-MM-DD)이고 메시지에 명시 월/일 없음
   (= thread에서 절대날짜 누수, 요일→날짜 계산 유발). 명시 "6/19" 있는 건 유지.
-- confidence·_label_reason·_audit_flag 제거. has_schedule=yes/pending/no 문자열.
+- confidence·_label_reason·_audit_flag 제거. schedule_status=yes/pending/no 문자열.
 
 사용:
     python scripts/build_c2_assemble.py            # dry-run
@@ -48,17 +48,17 @@ def main():
 
     rows = [json.loads(l) for l in POOL.read_text(encoding="utf-8").splitlines() if l.strip()]
     rows = [r for r in rows if not r.get("_audit_flag")]                      # flag 제외
-    rows = [r for r in rows if r.get("gold", {}).get("has_schedule") in ("yes", "pending", "no")]  # 오류 제외
+    rows = [r for r in rows if r.get("gold", {}).get("schedule_status") in ("yes", "pending", "no")]  # 오류 제외
 
-    yes = [r for r in rows if r["gold"]["has_schedule"] == "yes" and not is_leak(r)]
-    pend = [r for r in rows if r["gold"]["has_schedule"] == "pending" and not is_leak(r)]
-    no = [r for r in rows if r["gold"]["has_schedule"] == "no"]
-    leak = sum(1 for r in rows if r["gold"]["has_schedule"] in ("yes", "pending") and is_leak(r))
+    yes = [r for r in rows if r["gold"]["schedule_status"] == "yes" and not is_leak(r)]
+    pend = [r for r in rows if r["gold"]["schedule_status"] == "pending" and not is_leak(r)]
+    no = [r for r in rows if r["gold"]["schedule_status"] == "no"]
+    leak = sum(1 for r in rows if r["gold"]["schedule_status"] in ("yes", "pending") and is_leak(r))
 
     sel = [clean(r) for r in (yes[:N_YES] + pend + no[:N_NO])]
 
     from collections import Counter
-    d = Counter(r["gold"]["has_schedule"] for r in sel)
+    d = Counter(r["gold"]["schedule_status"] for r in sel)
     bad = 0
     for r in sel:
         for e in r["gold"].get("events", []):
