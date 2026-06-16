@@ -284,13 +284,15 @@ def main():
     ap.add_argument("--model", required=True)
     ap.add_argument("--eval", required=True)
     ap.add_argument("--out", default="logs/eval_latest.json")
-    ap.add_argument("--system_prompt", default=None, help="없으면 model_qwen.yaml 사용")
+    ap.add_argument("--system_prompt", default=None, help="직접 지정. 없으면 --model_config의 system_prompt")
+    ap.add_argument("--model_config", default="configs/model_qwen3_0_6b.yaml",
+                    help="system_prompt 출처 config — 반드시 학습과 동일해야 함(train/eval 프롬프트 불일치 방지)")
     ap.add_argument("--failures_out", default="data/failures/round_latest.jsonl")
     args = ap.parse_args()
 
     if args.system_prompt is None:
         import yaml
-        with open("configs/model_qwen.yaml", "r", encoding="utf-8") as f:
+        with open(args.model_config, "r", encoding="utf-8") as f:
             args.system_prompt = yaml.safe_load(f)["system_prompt"]
 
     model, tok = load_model(args.model)
