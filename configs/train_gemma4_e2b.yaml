@@ -1,0 +1,51 @@
+# 학습 설정 — Gemma 4 E2B (Qwen3-0.6B 비교 트랙)
+# 사용(로컬/Colab non-Unsloth): python scripts/train_lora.py --config configs/train_gemma4_e2b.yaml
+#   (권장 Colab 경로는 notebooks/calendar_gemma4.ipynb의 Unsloth — QAT 효율↑)
+# 데이터·golden·하이퍼파라미터는 Qwen 트랙과 동일 → 같은 조건 비교.
+run_name: gemma4-e2b-lora
+
+model_config: configs/model_gemma4_e2b.yaml
+lora_config:  configs/lora.yaml               # Gemma도 q/k/v/o/gate/up/down_proj 동일 → 재사용
+
+# 데이터셋 (Qwen 트랙과 동일 파일)
+train_data: data/processed/train.jsonl
+eval_data:  data/processed/val.jsonl
+eval_golden: data/eval/golden.jsonl
+
+# 학습 하이퍼파라미터 (Qwen과 동일 — 공정 비교)
+per_device_train_batch_size: 2         # E2B(~2B)라 OOM 시 1로↓ + grad_accum 32로↑
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 16        # 유효 batch 32
+num_train_epochs: 3
+learning_rate: 2.0e-4
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+weight_decay: 0.01
+max_grad_norm: 1.0
+seed: 42
+
+# 출력
+output_dir: models/lora/gemma4-e2b
+logging_steps: 20
+save_strategy: epoch
+save_total_limit: 2
+eval_strategy: epoch
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+greater_is_better: false
+
+# 메모리 / 속도
+bf16: true
+fp16: false
+completion_only_loss: true   # response_template는 model_config(gemma)에서 <start_of_turn>model\n 로 읽음
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+dataloader_num_workers: 2
+
+# QAT 베이스는 비양자화형(bf16)으로 로드 — bnb 4bit 재양자화 금지(이중 양자화 회피)
+load_in_4bit: false
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+
+report_to: none

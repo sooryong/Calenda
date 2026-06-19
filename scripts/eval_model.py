@@ -108,12 +108,18 @@ def load_model(path: str):
     return model, tok
 
 
-def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512) -> str:
+def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512, supports_system: bool = True) -> str:
     user_block = build_user_block(sample)  # thread_context 있으면 <대화내역> 블록 자동 삽입
-    msgs = [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user_block},
-    ]
+    if supports_system:
+        msgs = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_block},
+        ]
+    else:
+        # Gemma 등 system 역할 미지원: system을 첫 user 턴 접두로 합침 (학습 렌더와 동일)
+        msgs = [
+            {"role": "user", "content": system + "\n\n" + user_block},
+        ]
     # Qwen3 등 thinking 모델: non-thinking은 빈 <think></think> 블록으로 표현된다.
     # 학습 렌더가 assistant 턴에 항상 <think>\n\n</think>\n\n{json}을 넣으므로(템플릿 강제),
     # 추론도 enable_thinking=False로 프롬프트에 빈 think 블록을 미리 채워 순수 JSON만 생성하게
@@ -290,14 +296,16 @@ def main():
     ap.add_argument("--failures_out", default="data/failures/round_latest.jsonl")
     args = ap.parse_args()
 
+    import yaml
+    with open(args.model_config, "r", encoding="utf-8") as f:
+        _mcfg = yaml.safe_load(f)
     if args.system_prompt is None:
-        import yaml
-        with open(args.model_config, "r", encoding="utf-8") as f:
-            args.system_prompt = yaml.safe_load(f)["system_prompt"]
+        args.system_prompt = _mcfg["system_prompt"]
+    _supports_system = _mcfg.get("supports_system", True)
 
     model, tok = load_model(args.model)
     samples = list(read_jsonl(args.eval))
-    run_eval(samples, lambda s: infer(model, tok, args.system_prompt, s),
+    run_eval(samples, lambda s: infer(model, tok, args.system_prompt, s, supports_system=_supports_system),
              out=args.out, failures_out=args.failures_out)
 
 

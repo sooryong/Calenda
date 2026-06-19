@@ -1,7 +1,7 @@
-"""LoRA 학습 스크립트 (Qwen2.5-0.5B 또는 HyperCLOVA X SEED 0.5B).
+"""LoRA 학습 스크립트 (Qwen3-0.6B).
 
 사용:
-    python scripts/train_lora.py --config configs/train.yaml
+    python scripts/train_lora.py --config configs/train_qwen3_0_6b.yaml
 
 전제: pip install -e .[train]
 """
@@ -33,7 +33,7 @@ def load_yaml(path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
-def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: int):
+def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: int, supports_system: bool = True):
     """JSONL → chat-template 토크나이즈.
 
     중요: datasets.load_dataset("json", ...)이 ISO 8601 문자열을 pyarrow timestamp로
@@ -56,11 +56,18 @@ def build_chat_dataset(jsonl_path: str, tokenizer, system_prompt: str, max_len: 
     def to_chat(ex):
         user_block = build_user_block(ex)  # thread_context 있으면 <대화내역> 블록 자동 삽입
         gold_str = json.dumps(ex["gold"], ensure_ascii=False)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_block},
-            {"role": "assistant", "content": gold_str},
-        ]
+        if supports_system:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_block},
+                {"role": "assistant", "content": gold_str},
+            ]
+        else:
+            # Gemma 등 system 역할 미지원 템플릿: system을 첫 user 턴 접두로 합침
+            messages = [
+                {"role": "user", "content": system_prompt + "\n\n" + user_block},
+                {"role": "assistant", "content": gold_str},
+            ]
         text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
         return {"text": text}
 
@@ -141,8 +148,9 @@ def main():
     model = get_peft_model(model, peft_cfg)
     model.print_trainable_parameters()
 
-    train_ds = build_chat_dataset(cfg["train_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"])
-    eval_ds = build_chat_dataset(cfg["eval_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"])
+    _supports_system = model_cfg.get("supports_system", True)
+    train_ds = build_chat_dataset(cfg["train_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"], _supports_system)
+    eval_ds = build_chat_dataset(cfg["eval_data"], tokenizer, model_cfg["system_prompt"], model_cfg["max_seq_len"], _supports_system)
 
     # trl이 버전에 따라 max_seq_length/max_length 인자명이 다름.
     # 모든 버전에서 통하는 경로: 토크나이저의 model_max_length 위에서 설정 + SFTConfig에는 미지정.
@@ -198,6 +206,21 @@ def main():
         trainer_kwargs["processing_class"] = tokenizer
     elif "tokenizer" in trainer_params:
         trainer_kwargs["tokenizer"] = tokenizer
+
+    # (선택) completion-only 손실: 프롬프트(system+user+assistant 헤더)는 마스킹하고
+    # 응답 토큰(gold JSON + 종료토큰)에만 loss를 건다. packing=False(위에서 설정)일 때만 동작.
+    if cfg.get("completion_only_loss"):
+        from trl import DataCollatorForCompletionOnlyLM
+        # 응답 시작 마커는 베이스별로 다름 → model_config에서 읽음 (기본 Qwen ChatML).
+        #   Qwen: "<|im_start|>assistant" + 개행  ·  Gemma: "<start_of_turn>model" + 개행
+        _resp = model_cfg.get("response_template", "<|im_start|>assistant\n")
+        _resp_ids = tokenizer.encode(_resp, add_special_tokens=False)
+        trainer_kwargs["data_collator"] = DataCollatorForCompletionOnlyLM(
+            response_template=_resp_ids, tokenizer=tokenizer,
+        )
+        print(f"[train] completion-only 손실 ON — 프롬프트 마스킹, 응답 토큰만 학습 "
+              f"(response_template={_resp!r} → ids {_resp_ids})")
+
     trainer = SFTTrainer(**trainer_kwargs)
 
     trainer.train()
