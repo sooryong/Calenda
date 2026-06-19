@@ -42,8 +42,9 @@ gradient_checkpointing: true
 optim: paged_adamw_8bit
 dataloader_num_workers: 2
 
-# QAT 베이스는 비양자화형(bf16)으로 로드 — bnb 4bit 재양자화 금지(이중 양자화 회피)
-load_in_4bit: false
+# 천장 확인용(배포 아님): QLoRA 4비트 로드 — E2B(BF16 10GB)를 L4에서 가볍게(~4GB)·빠르게.
+#   배포용 QAT-GGUF가 목적이면 false로 두고 bf16 로드해야 하지만, 여기선 정확도 비교만이라 4비트 OK.
+load_in_4bit: true
 bnb_4bit_quant_type: nf4
 bnb_4bit_compute_dtype: bfloat16
 bnb_4bit_use_double_quant: true
