@@ -1,18 +1,17 @@
-# 학습 파이프라인 설정 — Qwen3-0.6B 베이스 스왑 실험 (독립 트랙)
-# Qwen2.5-0.5B 라인(configs/train.yaml)은 그대로 보존. 이 파일은 "데이터 동일, 모델만 Qwen3-0.6B" A/B.
+# 학습 파이프라인 설정 — Qwen3-0.6B (단일 베이스)
 # 사용: python scripts/train_lora.py --config configs/train_qwen3_0_6b.yaml
 # 버전 규약: 라운드 번호는 학습 산출물에만. 입력 데이터/앱 슬롯은 고정 이름.
-run_name: c2-qwen3-0.6b-lora
+run_name: c3-qwen3-0.6b-lora
 
-model_config: configs/model_qwen3_0_6b.yaml   # ← 유일한 실질 차이 (train.yaml은 model_qwen.yaml)
+model_config: configs/model_qwen3_0_6b.yaml
 lora_config:  configs/lora.yaml               # target_modules 동일(Qwen3도 q/k/v/o/gate/up/down_proj)
 
-# 데이터셋 — r28(Qwen2.5)과 동일 파일을 가리켜야 A/B가 깨끗함 (모델만 변수)
+# 데이터셋
 train_data: data/processed/train.jsonl
 eval_data:  data/processed/val.jsonl
 eval_golden: data/eval/golden.jsonl   # r27 평가셋과 동일 50건(real_golden을 golden으로 통합) — 동일 기준 비교
 
-# 학습 하이퍼파라미터 (Qwen3-0.6B vocab≈152k로 Qwen2.5와 동급 → 동일 설정 유지)
+# 학습 하이퍼파라미터
 per_device_train_batch_size: 2         # 큰 vocab logits OOM 회피. 유효배치는 accum으로 유지
 per_device_eval_batch_size: 2
 gradient_accumulation_steps: 16        # 유효 batch 32 (2×16)
@@ -24,8 +23,8 @@ weight_decay: 0.01
 max_grad_norm: 1.0
 seed: 42
 
-# 출력 — r29-qwen3-0.6b 전용 폴더 (Qwen2.5 산출물과 격리)
-output_dir: models/lora/c2-qwen3-0.6b
+# 출력
+output_dir: models/lora/c3-qwen3-0.6b
 logging_steps: 20
 save_strategy: epoch
 save_total_limit: 2
@@ -37,6 +36,7 @@ greater_is_better: false
 # 메모리 / 속도
 bf16: true
 fp16: false
+completion_only_loss: true   # #1 프롬프트 마스킹: 응답(gold JSON)에만 loss → 0.6B 용량 집중
 gradient_checkpointing: true    # 큰 vocab logits → 끄면 T4 16GB OOM
 optim: paged_adamw_8bit
 dataloader_num_workers: 2
