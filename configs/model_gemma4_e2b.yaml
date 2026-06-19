@@ -2,7 +2,7 @@
 # 온디바이스: E2B(유효 ~2B) int4 ≈ ~1GB → 폰 예산 ~1GB로 확장 시 배포 후보.
 # QAT: google가 양자화-인지 학습한 체크포인트. 파인튜닝은 비양자화형(unquantized)에 LoRA →
 #   merge → q4_0 GGUF 재양자화하면 QAT 품질 보존(PTQ 회귀 회피 — Qwen Q4_K_M 회귀와 대비).
-# 챗 템플릿: Gemma는 <start_of_turn>user ... <end_of_turn>\n<start_of_turn>model 구조.
+# 챗 템플릿: Gemma 4는 <|turn>user ... <turn|>\n<|turn>model 구조 (Gemma2/3의 <start_of_turn> 아님).
 #   system 역할은 미지원(또는 첫 user 턴에 합쳐짐) → supports_system: false 로 안전하게 접두 합침.
 # LoRA target_modules: Gemma도 q/k/v/o/gate/up/down_proj 동일 → configs/lora.yaml 그대로 재사용.
 name: gemma4-e2b
@@ -12,7 +12,7 @@ trust_remote_code: false
 
 # 베이스별 다른 부분 (train_lora.py가 model_config에서 읽음 — Qwen은 키 없으면 기본값)
 supports_system: false                 # Gemma: system 역할 미지원 → system_prompt를 첫 user 턴 접두로 합침
-response_template: "<start_of_turn>model\n"   # completion-only 마스킹 경계 (Qwen은 <|im_start|>assistant\n)
+response_template: "<|turn>model\n"   # completion-only 마스킹 경계 (Qwen은 <|im_start|>assistant\n)
 
 # system_prompt는 Qwen 트랙과 글자까지 동일 — 공정 비교(같은 지시문·같은 golden 54).
 system_prompt: |
