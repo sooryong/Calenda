@@ -78,10 +78,10 @@ class EventEditActivity : AppCompatActivity() {
         parseInto(cal, e.start)
         refreshButtons()
 
-        // 읽기전용 메타: 채널 · 수신시각 · 신뢰도 (카드와 동일 정보)
+        // 읽기전용 메타: 채널 · 수신시각 (카드와 동일 정보. c2: 신뢰도 폐지)
         val chLabel = when (e.channel) { "sms" -> "SMS"; "kakao" -> "카톡"; "gmail" -> "Gmail"; else -> e.channel }
         binding.editMeta.text =
-            "$chLabel · ${formatReceived(e.receivedAt, e.createdAt)} 수신 · 신뢰도 ${(e.confidence * 100).toInt()}%"
+            "$chLabel · ${formatReceived(e.receivedAt, e.createdAt)} 수신"
 
         registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
         binding.statusLabel.text =
@@ -233,8 +233,8 @@ class EventEditActivity : AppCompatActivity() {
             .put("organizer", JSONObject.NULL)
             .put("description", desc ?: JSONObject.NULL)
             .put("recurrence", cur.recurrence ?: JSONObject.NULL)
-            .put("confidence", 1.0)
-        return JSONObject().put("has_schedule", true).put("events", JSONArray().put(ev)).toString()
+        // c2: confidence 폐지. 사용자가 편집·확정한 일정이므로 schedule_status="yes".
+        return JSONObject().put("schedule_status", "yes").put("events", JSONArray().put(ev)).toString()
     }
 
     /** 24h → {hour(1~12), minute, marker} 토큰. resolver가 동일 시각으로 복원. */

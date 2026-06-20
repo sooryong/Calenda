@@ -186,7 +186,7 @@ class DebugActivity : AppCompatActivity() {
             val ext = ScheduleExtractor.parse(raw)
             lastEvents = ext.events.map { DateResolver.resolveEvent(receivedAt, sender, it) }
             renderResult(ext, lastEvents)
-            if (ext.parseError == null && ext.hasSchedule && lastEvents.isNotEmpty()) {
+            if (ext.parseError == null && ext.detected && lastEvents.isNotEmpty()) {
                 EventRepository.from(this@DebugActivity).save(
                     lastEvents.first(), channel, sender, message, EventStatus.PENDING,
                     receivedAt = receivedAt, modelRawJson = ext.rawJson, threadJson = null,
@@ -205,8 +205,8 @@ class DebugActivity : AppCompatActivity() {
             binding.addCalendarButton.visibility = View.GONE
             return
         }
-        sb.append("has_schedule: ").append(ext.hasSchedule).append("\n")
-        if (!ext.hasSchedule || events.isEmpty()) {
+        sb.append("schedule_status: ").append(ext.scheduleStatus).append("\n")
+        if (!ext.detected || events.isEmpty()) {
             sb.append("\n→ 등록할 일정 없음")
             binding.resultText.text = sb.toString()
             binding.addCalendarButton.visibility = View.GONE

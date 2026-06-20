@@ -61,7 +61,7 @@ object FeedbackExporter {
         r.editedJson?.let { return runCatching { JSONObject(it) }.getOrNull() }
         return when (r.status) {
             EventStatus.DISMISSED ->
-                JSONObject().put("has_schedule", false).put("events", JSONArray())
+                JSONObject().put("schedule_status", "no").put("events", JSONArray())
             EventStatus.ADDED, EventStatus.AUTO_ADDED ->
                 // 앱이 실제 등록한 형태(사람≠장소 가드 적용)로 정리해 내보냄.
                 r.modelRawJson?.let { runCatching { sanitize(JSONObject(it)) }.getOrNull() }

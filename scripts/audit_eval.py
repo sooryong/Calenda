@@ -25,7 +25,7 @@ def main():
     ap.add_argument("--out", default="logs/audit_r15.json")
     args = ap.parse_args()
 
-    system = yaml.safe_load(open("configs/model_qwen.yaml", encoding="utf-8"))["system_prompt"]
+    system = yaml.safe_load(open("configs/model_qwen3_0_6b.yaml", encoding="utf-8"))["system_prompt"]
     model, tok = load_model(args.model)
     samples = list(read_jsonl(args.eval))
 

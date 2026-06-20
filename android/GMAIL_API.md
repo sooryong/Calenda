@@ -48,14 +48,14 @@ GmailSyncWorker(주기) ─> GmailApiClient.silentToken()  // 무-UI, 동의돼 
    - **테스트 사용자**: 본인 Gmail(`sooryong.byun@gmail.com`)과 쓸 지인 계정 추가.
 4. **사용자 인증 정보 → OAuth 클라이언트 ID 만들기**:
    - 애플리케이션 유형: **Android**.
-   - 패키지 이름: **`com.calendaragent`** (= `applicationId`).
-   - **SHA-1**: 디버그 키로
-     `keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android`
-     의 SHA1 값 입력. (릴리스 서명으로 배포하면 릴리스 키 SHA-1도 추가.)
+   - 패키지 이름: **`com.calenda`** (= `applicationId`. ⚠ 과거 문서의 `com.calendaragent`는 오타 — 실제 applicationId는 `com.calenda`).
+   - **SHA-1**: 디버그 키 현재 값 = `08:EF:48:6A:F1:1B:D6:44:C0:EB:6F:F6:D6:68:E0:A3:91:FD:BC:7B`
+     (재확인: `keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android`). 릴리스 서명 배포 시 릴리스 키 SHA-1도 추가.
    > Android OAuth 클라이언트는 client-secret이 없고 (package + SHA-1)로 앱을 식별한다. 앱 코드에 ID를 박을 필요 없음 —
    > `AuthorizationClient`가 설치 서명으로 자동 매칭한다. 그래서 `GmailApiClient`에 클라이언트 ID 상수가 없다.
 
-설정 후: 앱 **설정 → Gmail 본문 전체 연동** 버튼 → 계정 선택 + 동의 → 끝. 30분마다 새 메일 본문을 증분 수집.
+설정 후: 앱 **설정 → Google 캘린더 선택**(계정 결정) → 그 아래 **선택한 계정의 Gmail 본문 전체 읽기** 버튼 → 동의 → 끝.
+(★ 캘린더·Gmail **한 계정 통합**: `AuthorizationRequest.setAccount(선택 캘린더 계정)`으로 계정 선택 화면 없이 동일 계정 인가. `SettingsStore.gmailAccount`에 저장 → 워커 `silentToken`도 같은 계정 사용. 캘린더 미선택 시 버튼은 안내 토스트.) 30분마다 새 메일 본문을 증분 수집.
 
 ## 빌드 / 검증
 

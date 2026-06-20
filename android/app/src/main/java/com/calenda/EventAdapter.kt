@@ -42,16 +42,14 @@ class EventAdapter(
             b.eventLocation.visibility = View.GONE
         } else {
             b.eventLocation.visibility = View.VISIBLE
-            b.eventLocation.text = "📍 ${e.location}"
+            b.eventLocation.text = e.location
         }
 
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
-        // 메타: 채널 · 수신시각 · 신뢰도 [· 등록됨]. (발신자는 제목에 포함되므로 생략. 예비는 상태 표시 없음.)
-        val conf = (e.confidence * 100).toInt()
+        // 메타: 채널 · 수신시각 [· 등록됨]. (c2: confidence 폐지로 신뢰도 표시 제거. 발신자는 제목에 포함, 예비는 상태 표시 없음.)
         val chLabel = when (e.channel) { "sms" -> "SMS"; "kakao" -> "카톡"; "gmail" -> "Gmail"; else -> e.channel }
         b.eventMeta.text = buildString {
             append(chLabel).append(" · ").append(formatReceived(e.receivedAt, e.createdAt))
-            append(" · 신뢰도 ").append(conf).append("%")
             if (registered) append(" · 등록됨")
         }
 

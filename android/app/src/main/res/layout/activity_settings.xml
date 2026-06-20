@@ -41,13 +41,6 @@
             android:textColor="?android:attr/textColorPrimary"
             android:background="?attr/selectableItemBackground" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/calendar_desc"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
-
         <!-- 모델 -->
         <View
             android:layout_width="match_parent"
@@ -65,18 +58,10 @@
             android:textColor="?attr/colorPrimary" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/model_purpose"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
-
-        <TextView
             android:id="@+id/modelInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="4dp"
             android:textSize="13sp"
             android:textColor="?android:attr/textColorSecondary" />
 
@@ -96,46 +81,14 @@
             android:textSize="16sp"
             android:textColor="?attr/colorPrimary" />
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/autoAddSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/auto_add_label" />
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:text="@string/auto_add_desc"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 
-        <TextView
-            android:id="@+id/thresholdLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textSize="14sp" />
-
-        <SeekBar
-            android:id="@+id/thresholdSeek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:min="50"
-            android:max="100" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/strictRegisterSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/strict_register_label" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/strict_register_desc"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
 
         <!-- 채널 -->
         <View
@@ -153,18 +106,7 @@
             android:textSize="16sp"
             android:textColor="?attr/colorPrimary" />
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/chKakao"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ch_kakao" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/chSms"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ch_sms" />
-
+        <!-- Gmail (첫번째): 알림 캡처 토글 + 본문 전체 읽기(opt-in)를 함께 묶음 -->
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/chGmail"
             android:layout_width="match_parent"
@@ -179,13 +121,12 @@
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 
-        <!-- Gmail 풀바디 연동(opt-in): 알림 미리보기에 안 잡히는 묻힌 일정까지 본문 전체로 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/gmailApiButton"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:text="@string/gmail_api_connect" />
 
         <TextView
@@ -195,6 +136,19 @@
             android:text="@string/gmail_api_desc"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/chKakao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/ch_kakao" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/chSms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ch_sms" />
 
         <!-- 백그라운드 수집 -->
         <View
@@ -225,11 +179,26 @@
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary" />
 
-        <Button
-            android:id="@+id/batteryButton"
+        <!-- 배터리 최적화 제외 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_battery"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/batterySwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:text="@string/battery_exempt" />
 
         <!-- 학습 데이터 -->
@@ -263,12 +232,27 @@
             android:enabled="false"
             android:text="@string/learning_label" />
 
+        <!-- 디버그 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/section_debug"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary" />
+
         <Button
             android:id="@+id/debugButton"
-            style="?android:attr/buttonBarButtonStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="4dp"
             android:text="@string/debug_open" />
     </LinearLayout>
 </ScrollView>

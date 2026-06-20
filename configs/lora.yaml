@@ -5,8 +5,8 @@ dropout: 0.05
 bias: none
 task_type: CAUSAL_LM
 
-# Qwen2.5 / HyperCLOVA 모두에서 사용 가능한 target_modules
-# (둘 다 LLaMA-like 구조라 동일 이름)
+# Qwen3-0.6B target_modules (q/k/v/o/gate/up/down_proj)
+
 target_modules:
   - q_proj
   - k_proj

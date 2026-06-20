@@ -4,7 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.SeekBar
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +29,8 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { SettingsStore.from(this) }
+    /** 인가 동의 진행 중 계정(런처 콜백이 이 계정으로 저장). 캘린더와 통합된 Google 계정. */
+    private var pendingGmailAccount: String? = null
     private val repo by lazy { EventRepository.from(this) }
 
     /** Gmail OAuth 동의 화면(PendingIntent) 결과 수신. */
@@ -38,9 +40,11 @@ class SettingsActivity : AppCompatActivity() {
         try {
             val authResult = Identity.getAuthorizationClient(this)
                 .getAuthorizationResultFromIntent(result.data)
-            onGmailAuthorized(authResult.accessToken)
+            val acct = pendingGmailAccount ?: selectedCalendarAccount() ?: ""
+            onGmailAuthorized(acct, authResult.accessToken)
         } catch (e: Exception) {
-            Toast.makeText(this, R.string.gmail_api_failed, Toast.LENGTH_SHORT).show()
+            Log.w("Settings", "gmail consent failed", e)
+            Toast.makeText(this, getString(R.string.gmail_api_failed) + ": " + (e.message ?: ""), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -49,27 +53,7 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 자동 등록
-        binding.autoAddSwitch.isChecked = settings.autoAddEnabled
-        binding.autoAddSwitch.setOnCheckedChangeListener { _, v -> settings.autoAddEnabled = v }
-
-        // 임계값 (50~100% → 0.50~1.00)
-        val pct = (settings.confidenceThreshold * 100).toInt().coerceIn(50, 100)
-        binding.thresholdSeek.progress = pct
-        binding.thresholdLabel.text = getString(R.string.threshold_label, pct)
-        binding.thresholdSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
-                binding.thresholdLabel.text = getString(R.string.threshold_label, p)
-            }
-            override fun onStartTrackingTouch(sb: SeekBar) {}
-            override fun onStopTrackingTouch(sb: SeekBar) {
-                settings.confidenceThreshold = sb.progress / 100f
-            }
-        })
-
-        // 엄격 등록(4W 필수)
-        binding.strictRegisterSwitch.isChecked = settings.strictRegister
-        binding.strictRegisterSwitch.setOnCheckedChangeListener { _, v -> settings.strictRegister = v }
+        // 일정 등록: 토글 없음. 자동등록 분기는 schedule_status="yes"가 결정(확정→자동, pending→예비, no→무시).
 
         // 채널 토글
         binding.chKakao.isChecked = settings.channelEnabled("kakao")
@@ -89,11 +73,16 @@ class SettingsActivity : AppCompatActivity() {
             settings.collectorEnabled = v
             if (v) CollectorService.start(this) else CollectorService.stop(this)
         }
-        binding.batteryButton.setOnClickListener {
+        // 배터리 최적화 제외: 토글이 현재 제외 상태를 반영. 시스템만 변경 가능하므로 탭하면 해당 시스템 화면을 연다.
+        binding.batterySwitch.isChecked = isBatteryExempt()
+        binding.batterySwitch.setOnClickListener {
+            binding.batterySwitch.isChecked = isBatteryExempt()   // 시각 상태를 실제값으로 고정(복귀 시 onResume이 재동기화)
             try {
-                startActivity(
-                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")),
-                )
+                if (isBatteryExempt()) {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                } else {
+                    startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+                }
             } catch (e: Exception) {
                 startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             }
@@ -144,32 +133,46 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun pickCalendar() = CalendarPicker.show(this) { refreshCalendarButton() }
 
-    /** 버튼: 꺼져 있으면 OAuth 인가 시작, 켜져 있으면 연동 해제. */
+    /** 선택한 캘린더가 속한 Google 계정명(캘린더·Gmail 통합 ID). 캘린더 미선택이면 null. */
+    private fun selectedCalendarAccount(): String? =
+        CalendarWriter.writableCalendars(this).firstOrNull { it.id == settings.targetCalendarId }?.account
+
+    /** 버튼: 꺼져 있으면 **선택한 캘린더 계정**으로 Gmail 인가 시작(같은 ID 통합), 켜져 있으면 해제. */
     private fun toggleGmailApi() {
         if (settings.gmailApiEnabled) {
             settings.gmailApiEnabled = false
+            settings.gmailAccount = null
             GmailSyncWorker.disable(this)
             refreshGmailApiButton()
             Toast.makeText(this, R.string.gmail_api_off, Toast.LENGTH_SHORT).show()
             return
         }
-        Identity.getAuthorizationClient(this).authorize(GmailApiClient.authRequest())
+        // 캘린더·Gmail 통합: 위에서 고른 캘린더의 Google 계정으로 인가(별도 계정 선택 화면 없음).
+        val account = selectedCalendarAccount()
+        if (account == null) {
+            Toast.makeText(this, R.string.gmail_need_calendar, Toast.LENGTH_LONG).show()
+            return
+        }
+        pendingGmailAccount = account
+        Identity.getAuthorizationClient(this).authorize(GmailApiClient.authRequest(account))
             .addOnSuccessListener { res ->
                 val pi = res.pendingIntent
                 if (res.hasResolution() && pi != null) {
                     gmailAuthLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
                 } else {
-                    onGmailAuthorized(res.accessToken)   // 이미 동의됨 → 토큰 즉시
+                    onGmailAuthorized(account, res.accessToken)   // 이미 동의됨 → 토큰 즉시
                 }
             }
-            .addOnFailureListener {
-                Toast.makeText(this, R.string.gmail_api_failed, Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { e ->
+                Log.w("Settings", "gmail authorize failed", e)
+                Toast.makeText(this, getString(R.string.gmail_api_failed) + ": " + (e.message ?: ""), Toast.LENGTH_LONG).show()
             }
     }
 
-    /** 인가 성공 → 풀바디 연동 on + 주기 폴링 등록 + 즉시 1회 동기화. */
-    private fun onGmailAuthorized(token: String?) {
+    /** 인가 성공 → 통합 계정 저장 + 풀바디 연동 on + 주기 폴링 등록 + 즉시 1회 동기화. */
+    private fun onGmailAuthorized(account: String, token: String?) {
         settings.gmailApiEnabled = true
+        settings.gmailAccount = account.ifBlank { selectedCalendarAccount() }
         settings.setChannelEnabled("gmail", true)
         GmailSyncWorker.enable(this)
         refreshGmailApiButton()
@@ -190,7 +193,12 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshModelInfo()  // 디버그 화면에서 모델 임포트/교체 후 돌아오면 갱신
+        binding.batterySwitch.isChecked = isBatteryExempt()  // 시스템 화면서 바꾸고 돌아오면 동기화
     }
+
+    /** 이 앱이 배터리 최적화에서 제외돼 있는지(=백그라운드 상주 허용). 시스템만 변경 가능. */
+    private fun isBatteryExempt(): Boolean =
+        getSystemService(android.os.PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) == true
 
     /** 설치된 gguf 버전(general.name)·업로드 시각 표시. 없으면 임포트 안내. */
     private fun refreshModelInfo() {

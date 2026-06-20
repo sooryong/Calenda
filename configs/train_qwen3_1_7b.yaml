@@ -1,0 +1,50 @@
+# 학습 설정 — Qwen3-1.7B (c4 데이터 동일, "배포 가능한 더 큰 모델" 천장 실험)
+# 사용: python scripts/train_lora.py --config configs/train_qwen3_1_7b.yaml
+# 공정 비교: train.jsonl(1156)·golden·하이퍼파라미터 c4와 동일, 베이스만 1.7B.
+run_name: qwen3-1.7b-c4
+
+model_config: configs/model_qwen3_1_7b.yaml
+lora_config:  configs/lora.yaml               # 1.7B도 q/k/v/o/gate/up/down_proj 동일 → 재사용
+
+# 데이터셋 (c4와 동일 파일)
+train_data: data/processed/train.jsonl
+eval_data:  data/processed/val.jsonl
+eval_golden: data/eval/golden.jsonl
+
+# 학습 하이퍼파라미터 (c4와 동일 — 같은 조건)
+per_device_train_batch_size: 2         # 1.7B bf16(~3.4GB)+LoRA는 L4 24GB에 여유. OOM 시 1로↓
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 16        # 유효 batch 32
+num_train_epochs: 3
+learning_rate: 2.0e-4
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+weight_decay: 0.01
+max_grad_norm: 1.0
+seed: 42
+
+# 출력
+output_dir: models/lora/qwen3-1.7b-c4
+logging_steps: 20
+save_strategy: epoch
+save_total_limit: 2
+eval_strategy: epoch
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+greater_is_better: false
+
+# 메모리 / 속도
+bf16: true
+fp16: false
+completion_only_loss: true   # response_template는 model_config 미지정 → Qwen 기본(<|im_start|>assistant\n)
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+dataloader_num_workers: 2
+
+# 1.7B는 bf16 풀 로드가 L4에 들어감 → QLoRA 불필요(품질 우선). OOM이면 load_in_4bit: true.
+load_in_4bit: false
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+
+report_to: none

@@ -9,21 +9,6 @@ import android.content.Context
 class SettingsStore(ctx: Context) {
     private val prefs = ctx.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    /** 고신뢰도 자동 등록 on/off. */
-    var autoAddEnabled: Boolean
-        get() = prefs.getBoolean(K_AUTO_ADD, true)
-        set(v) = prefs.edit().putBoolean(K_AUTO_ADD, v).apply()
-
-    /** 이 값 이상이면 자동 등록, 미만이면 확인 알림. */
-    var confidenceThreshold: Float
-        get() = prefs.getFloat(K_THRESHOLD, 0.85f)
-        set(v) = prefs.edit().putFloat(K_THRESHOLD, v).apply()
-
-    /** 엄격 등록: 제목·일시·장소(What·When·Where)가 모두 있어야 자동 등록. Who는 발신자로 충족. 하나라도 없으면 예비. */
-    var strictRegister: Boolean
-        get() = prefs.getBoolean(K_STRICT, true)
-        set(v) = prefs.edit().putBoolean(K_STRICT, v).apply()
-
     fun channelEnabled(channel: String): Boolean =
         prefs.getBoolean(keyChannel(channel), true)
 
@@ -57,17 +42,20 @@ class SettingsStore(ctx: Context) {
         get() = prefs.getLong(K_GMAIL_SYNC, 0L)
         set(v) = prefs.edit().putLong(K_GMAIL_SYNC, v).apply()
 
+    /** Gmail 본문 읽기에 쓸 Google 계정명(= 선택한 캘린더 계정). 캘린더·Gmail을 한 ID로 통합. null=미설정. */
+    var gmailAccount: String?
+        get() = prefs.getString(K_GMAIL_ACCOUNT, null)
+        set(v) = prefs.edit().putString(K_GMAIL_ACCOUNT, v).apply()
+
     private fun keyChannel(channel: String) = "channel_$channel"
 
     companion object {
-        private const val K_AUTO_ADD = "auto_add"
-        private const val K_THRESHOLD = "confidence_threshold"
-        private const val K_STRICT = "strict_register"
         private const val K_COLLECTOR = "collector_enabled"
         private const val K_ONBOARDING = "onboarding_done"
         private const val K_CALENDAR = "target_calendar_id"
         private const val K_GMAIL_API = "gmail_api_enabled"
         private const val K_GMAIL_SYNC = "gmail_last_sync_millis"
+        private const val K_GMAIL_ACCOUNT = "gmail_account"
         fun from(ctx: Context) = SettingsStore(ctx)
     }
 }

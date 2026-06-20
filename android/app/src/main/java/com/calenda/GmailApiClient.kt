@@ -1,5 +1,6 @@
 package com.calenda
 
+import android.accounts.Account
 import android.content.Context
 import android.util.Base64
 import android.util.Log
@@ -36,11 +37,14 @@ object GmailApiClient {
         .callTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    /** 인가 요청 객체(Activity가 Identity.getAuthorizationClient(this).authorize(req)로 사용). */
-    fun authRequest(): AuthorizationRequest =
-        AuthorizationRequest.builder()
+    /** 인가 요청 객체(Activity가 Identity.getAuthorizationClient(this).authorize(req)로 사용).
+     *  account 지정 시 그 Google 계정으로 고정 → 캘린더와 **같은 계정**으로 통합(계정 선택 화면 생략). */
+    fun authRequest(account: String? = null): AuthorizationRequest {
+        val b = AuthorizationRequest.builder()
             .setRequestedScopes(listOf(Scope(SCOPE_GMAIL_READONLY)))
-            .build()
+        if (!account.isNullOrBlank()) b.setAccount(Account(account, "com.google"))
+        return b.build()
+    }
 
     /**
      * 백그라운드용 무-UI 토큰. 사용자가 이미 동의했으면 액세스 토큰을 반환, 재동의가 필요하면 null.
@@ -48,8 +52,10 @@ object GmailApiClient {
      */
     suspend fun silentToken(ctx: Context): String? = withContext(Dispatchers.IO) {
         try {
+            // 캘린더와 통합된 동일 계정으로 무-UI 토큰 요청(저장된 gmailAccount = 선택 캘린더 계정).
+            val account = SettingsStore.from(ctx).gmailAccount
             val result = Tasks.await(
-                Identity.getAuthorizationClient(ctx.applicationContext).authorize(authRequest())
+                Identity.getAuthorizationClient(ctx.applicationContext).authorize(authRequest(account))
             )
             if (result.hasResolution()) {
                 // UI 동의가 필요(최초/만료) → 백그라운드에선 처리 불가. Activity에서 인가 후 재시도.
