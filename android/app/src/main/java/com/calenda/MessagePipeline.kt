@@ -33,6 +33,8 @@ object MessagePipeline {
         val isNew = ConversationBuffer.add(msg)
         if (!isNew) { Log.d(TAG, "skip: duplicate (ConversationBuffer)"); return }
         if (!ScheduleHeuristics.looksScheduleRelated(msg.body)) { Log.d(TAG, "skip: heuristic pre-filter"); return }
+        if (ScheduleHeuristics.isCompletionNotification(msg.body)) { Log.d(TAG, "skip: completion/status notification"); return }
+        if (ScheduleHeuristics.isPaymentNotification(msg.body, msg.timeMillis)) { Log.d(TAG, "skip: payment notification (timestamp match)"); return }
         // Gmail은 멀티턴 불필요. 카톡/문자만 누적 대화내역 사용.
         val thread = if (msg.channel == "gmail") emptyList() else ConversationBuffer.contextBefore(msg.conversationKey)
         Log.d(TAG, "accepted → inference")
@@ -51,6 +53,8 @@ object MessagePipeline {
         val hasCue = ScheduleHeuristics.looksScheduleRelated(msg.body) ||
             thread.any { ScheduleHeuristics.looksScheduleRelated(it.message) }
         if (!hasCue) { Log.d(TAG, "skip(scraped): heuristic"); return }
+        if (ScheduleHeuristics.isCompletionNotification(msg.body)) { Log.d(TAG, "skip(scraped): completion notification"); return }
+        if (ScheduleHeuristics.isPaymentNotification(msg.body, msg.timeMillis)) { Log.d(TAG, "skip(scraped): payment notification"); return }
         Log.d(TAG, "accepted(scraped) → inference")
         worker.launch { runInference(appCtx, msg, thread) }
     }
@@ -74,8 +78,8 @@ object MessagePipeline {
             Log.w(TAG, "parse error: ${ext.parseError}")
             return
         }
-        // has_schedule=false(아직 협의 중/일정 아님)면 아무것도 안 함
-        if (ext.hasSchedule && ext.events.isNotEmpty()) {
+        // schedule_status="no"(거래·통보·광고·인사 등 비일정)면 아무것도 안 함. yes/pending만 진행.
+        if (ext.detected && ext.events.isNotEmpty()) {
             // 제목 출처(' · 발신자'): 내가 보낸 게 트리거면 "나"가 아니라 상대(counterpart)를 출처로.
             val titleSender = if (msg.fromMe) msg.counterpart.ifBlank { null } else msg.sender
             // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산), 그 뒤 개인 별칭맵으로 location 보정
@@ -96,7 +100,7 @@ object MessagePipeline {
                 room = msg.room,
             )
             if (id != null) {
-                EventRouter.route(appCtx, repo, id, event, msg)
+                EventRouter.route(appCtx, repo, id, event, msg, ext.scheduleStatus)
             } else {
                 Log.d(TAG, "duplicate event — skip")
             }
