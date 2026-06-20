@@ -10,7 +10,7 @@
 
 안드로이드 폰에서 SMS / 카카오톡 / Gmail로 들어오는 메시지에서 **일정을 자동 추출해 Google Calendar에 등록**하는 에이전트.
 
-핵심 제약: **온디바이스 LLM, ~400MB**. Qwen2.5-0.5B-Instruct(또는 HyperCLOVA X SEED 0.5B)를 LoRA 파인튜닝 + GGUF INT4 양자화로 폰에 올린다.
+핵심 제약: **온디바이스 LLM**(폰 예산권 ~800MB, Q8까지). **Qwen/Qwen3-0.6B**를 LoRA 파인튜닝 + GGUF 양자화(Q8_0 배포)로 폰에 올린다.
 
 ---
 
@@ -69,10 +69,9 @@ calenda/
 │   └── quantize.sh       ← llama.cpp 양자화
 │
 ├── configs/
-│   ├── model_qwen.yaml       ← Qwen2.5-0.5B (1차)
-│   ├── model_hyperclova.yaml ← HyperCLOVA X SEED 0.5B (비교용)
+│   ├── model_qwen3_0_6b.yaml  ← Qwen3-0.6B (단일 베이스)
 │   ├── lora.yaml             ← r=16, alpha=32
-│   └── train.yaml            ← 하이퍼파라미터 전체
+│   └── train_qwen3_0_6b.yaml ← 하이퍼파라미터 (completion-only ON)
 │
 ├── data/
 │   ├── raw/              ← Generator 원본 출력
@@ -86,7 +85,7 @@ calenda/
 │   └── gguf/             ← Q4_K_M 등
 │
 ├── ui/streamlit_app.py   ← 데이터 검수 + 에러 분석 (Streamlit)
-├── notebooks/            ← calendar_kaggle.ipynb(bf16, 권장) / colab_train.ipynb(fp16 대안)
+├── notebooks/            ← calendar_colab.ipynb(Colab L4 학습) / calendar_quantize.ipynb(로컬 양자화)
 ├── logs/                 ← 학습/평가 로그
 └── android/              ← 온디바이스 앱 (SMS/카톡 수집 + GGUF 추론 + DateResolver)
 ```
@@ -168,16 +167,12 @@ calenda/
 
 ## 6. 베이스 모델 / 토크나이저
 
-1차 후보: **Qwen/Qwen2.5-0.5B-Instruct** (`configs/model_qwen.yaml`)
-- 다국어 안정, 한국어 양호, 토크나이저 효율 OK
-- LLaMA-like 구조라 LoRA target_modules 표준
+**단일 베이스: Qwen/Qwen3-0.6B** (`configs/model_qwen3_0_6b.yaml`)
+- 한국어 양호, 토크나이저 효율 OK, LLaMA-like 구조라 LoRA target_modules 표준(q/k/v/o/gate/up/down_proj)
+- thinking 모델이나 SFT gold가 순수 JSON이라 학습으로 비-thinking 고정. 추론은 빈 `<think></think>` 프리필.
+- 폰 예산권 ~800MB(Q8까지). 배포 양자화는 Q8_0 고정(Q4_K_M은 회귀).
 
-비교 후보: **naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-0.5B** (`configs/model_hyperclova.yaml`)
-- 네이버, 한국어 네이티브
-- `trust_remote_code=true` 필요할 수 있음 (모델 카드 확인)
-- 라이선스 사용 전 확인 필수
-
-모델 교체는 `configs/train.yaml`의 `model_config:` 한 줄만 바꾸면 됨.
+(이전 Qwen2.5-0.5B / HyperCLOVA 라인은 폐기·삭제됨. 모델은 Qwen3-0.6B로 통일.)
 
 ---
 
@@ -205,11 +200,11 @@ python scripts/plan.py        --out data/raw/plan_v1.json
 python scripts/generate.py    --plan data/raw/plan_v1.json --out data/raw/v1.jsonl --workers 4
 python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.jsonl
 
-# 학습 → merge → 평가 → 양자화 (rN = 라운드. 학습은 Kaggle T4x2 DDP, 나머지는 로컬)
-python scripts/train_lora.py  --config configs/train.yaml
-python scripts/merge_lora.py  --base Qwen/Qwen2.5-0.5B-Instruct --lora models/lora/r11-qwen --out models/merged/r11-qwen
-python scripts/eval_model.py  --model models/merged/r11-qwen --eval data/eval/golden.jsonl --out logs/eval_r11-qwen.json
-bash   scripts/quantize.sh    models/merged/r11-qwen models/gguf/r11-qwen
+# 학습 → merge → 평가 → 양자화 (학습은 Colab L4, merge/eval/quantize는 로컬)
+python scripts/train_lora.py  --config configs/train_qwen3_0_6b.yaml
+python scripts/merge_lora.py  --base Qwen/Qwen3-0.6B --lora models/lora/c2-qwen3-0.6b --out models/merged/c2-qwen3-0.6b
+python scripts/eval_model.py  --model models/merged/c2-qwen3-0.6b --eval data/eval/golden.jsonl --out logs/eval_c2-qwen3-0.6b.json --model_config configs/model_qwen3_0_6b.yaml
+bash   scripts/quantize.sh    models/merged/c2-qwen3-0.6b models/gguf/c2-qwen3-0.6b
 
 # 폐루프: 실패셋으로 다음 라운드 시나리오 생성
 python scripts/plan.py --failures data/failures/round_latest.jsonl --out data/raw/plan_v2.json
