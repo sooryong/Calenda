@@ -170,22 +170,23 @@ def resolve_time(time_obj: dict | None, received_dt: _datetime) -> str | None:
     return f"{h:02d}:{m:02d}"
 
 
-def resolve_when(received_at, date_token, time_obj, end_time_obj=None, all_day=False, tz="+09:00") -> dict:
+def resolve_when(received_at, date_token, time_obj, end_time_obj=None, tz="+09:00") -> dict:
     """모델의 date/time → 절대 start/end ISO. eval·앱 공용 단일 진실원.
+    all_day는 time_obj가 None이면 자동으로 True (모델 출력 필드 불필요).
     반환 {'start': ISO|None, 'end': ISO|None, 'all_day': bool}."""
     try:
         recv = received_at if hasattr(received_at, "date") else _datetime.fromisoformat(str(received_at))
     except Exception:
-        return {"start": None, "end": None, "all_day": bool(all_day)}
+        return {"start": None, "end": None, "all_day": time_obj is None}
     d = resolve_date(recv.date(), date_token)
     # 규칙7: 날짜가 '진짜 없을' 때만(빈/None) 시간만 → 오늘.
     # date가 있었지만 인식 못 한 토큰이면 오늘로 단정하지 않음(잘못된 today 방지).
     if d is None and time_obj and not (date_token and str(date_token).strip()):
         d = recv.date()
     if d is None:
-        return {"start": None, "end": None, "all_day": bool(all_day)}
-    if all_day or not time_obj:
-        return {"start": d.isoformat(), "end": None, "all_day": bool(all_day)}
+        return {"start": None, "end": None, "all_day": time_obj is None}
+    if not time_obj:
+        return {"start": d.isoformat(), "end": None, "all_day": True}
     start = f"{d.isoformat()}T{resolve_time(time_obj, recv)}:00{tz}"
     end = f"{d.isoformat()}T{resolve_time(end_time_obj, recv)}:00{tz}" if end_time_obj else None
     return {"start": start, "end": end, "all_day": False}
@@ -272,7 +273,7 @@ def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
     제목은 compose_title로 조합. ★ location 등 어떤 필드도 누락 없이 캐리."""
     when = resolve_when(
         received_at, event.get("date"), event.get("time"),
-        event.get("end_time"), event.get("all_day", False),
+        event.get("end_time"),
     )
     loc = _drop_personlike_location(event.get("location"), event.get("attendees", []))  # 사람 이름 오추출 제거
     if loc and loc.strip() == (event.get("title") or "").strip():
