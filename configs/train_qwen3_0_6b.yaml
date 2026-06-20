@@ -1,7 +1,7 @@
 # 학습 파이프라인 설정 — Qwen3-0.6B (단일 베이스)
 # 사용: python scripts/train_lora.py --config configs/train_qwen3_0_6b.yaml
 # 버전 규약: 라운드 번호는 학습 산출물에만. 입력 데이터/앱 슬롯은 고정 이름.
-run_name: c8-qwen3-0.6b-lora
+run_name: c9-qwen3-0.6b-lora
 
 model_config: configs/model_qwen3_0_6b.yaml
 lora_config:  configs/lora.yaml               # target_modules 동일(Qwen3도 q/k/v/o/gate/up/down_proj)
@@ -24,7 +24,7 @@ max_grad_norm: 1.0
 seed: 42
 
 # 출력
-output_dir: models/lora/c8-qwen3-0.6b
+output_dir: models/lora/c9-qwen3-0.6b
 logging_steps: 20
 save_strategy: epoch
 save_total_limit: 2
