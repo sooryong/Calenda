@@ -210,7 +210,10 @@ def main():
     # (선택) completion-only 손실: 프롬프트(system+user+assistant 헤더)는 마스킹하고
     # 응답 토큰(gold JSON + 종료토큰)에만 loss를 건다. packing=False(위에서 설정)일 때만 동작.
     if cfg.get("completion_only_loss"):
-        from trl import DataCollatorForCompletionOnlyLM
+        try:
+            from trl import DataCollatorForCompletionOnlyLM
+        except ImportError:
+            from trl.trainer import DataCollatorForCompletionOnlyLM
         # 응답 시작 마커는 베이스별로 다름 → model_config에서 읽음 (기본 Qwen ChatML).
         #   Qwen: "<|im_start|>assistant" + 개행  ·  Gemma: "<start_of_turn>model" + 개행
         _resp = model_cfg.get("response_template", "<|im_start|>assistant\n")
