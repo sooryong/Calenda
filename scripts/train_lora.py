@@ -209,22 +209,36 @@ def main():
 
     # (선택) completion-only 손실: 프롬프트(system+user+assistant 헤더)는 마스킹하고
     # 응답 토큰(gold JSON + 종료토큰)에만 loss를 건다. packing=False(위에서 설정)일 때만 동작.
-    if cfg.get("completion_only_loss"):
-        try:
-            from trl import DataCollatorForCompletionOnlyLM
-        except ImportError:
-            from trl.trainer import DataCollatorForCompletionOnlyLM
-        # 응답 시작 마커는 베이스별로 다름 → model_config에서 읽음 (기본 Qwen ChatML).
-        #   Qwen: "<|im_start|>assistant" + 개행  ·  Gemma: "<start_of_turn>model" + 개행
-        _resp = model_cfg.get("response_template", "<|im_start|>assistant\n")
+    _use_completion_only = cfg.get("completion_only_loss")
+    _resp = model_cfg.get("response_template", "<|im_start|>assistant\n")
+
+    # TRL < 1.x: DataCollatorForCompletionOnlyLM (data_collator 방식)
+    # TRL >= 1.x: train_on_responses_only (trainer wrap 방식)
+    _collator_set = False
+    if _use_completion_only:
         _resp_ids = tokenizer.encode(_resp, add_special_tokens=False)
-        trainer_kwargs["data_collator"] = DataCollatorForCompletionOnlyLM(
-            response_template=_resp_ids, tokenizer=tokenizer,
-        )
-        print(f"[train] completion-only 손실 ON — 프롬프트 마스킹, 응답 토큰만 학습 "
-              f"(response_template={_resp!r} → ids {_resp_ids})")
+        for _mod in ("trl", "trl.trainer", "trl.trainer.utils", "trl.data_utils"):
+            try:
+                import importlib
+                _DataCollator = getattr(importlib.import_module(_mod), "DataCollatorForCompletionOnlyLM")
+                trainer_kwargs["data_collator"] = _DataCollator(
+                    response_template=_resp_ids, tokenizer=tokenizer,
+                )
+                print(f"[train] completion-only ON (collator/{_mod}) template={_resp!r} ids={_resp_ids}")
+                _collator_set = True
+                break
+            except (ImportError, AttributeError):
+                continue
 
     trainer = SFTTrainer(**trainer_kwargs)
+
+    if _use_completion_only and not _collator_set:
+        try:
+            from trl import train_on_responses_only
+            trainer = train_on_responses_only(trainer, response_template=_resp)
+            print(f"[train] completion-only ON (train_on_responses_only) template={_resp!r}")
+        except (ImportError, Exception) as e:
+            print(f"[train] WARNING: completion-only 설정 실패({e}), 전체 토큰 학습으로 진행")
 
     trainer.train()
     trainer.save_model(cfg["output_dir"])
