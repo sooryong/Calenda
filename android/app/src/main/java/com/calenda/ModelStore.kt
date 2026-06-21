@@ -12,7 +12,7 @@ object ModelStore {
      * 임포트된 모델이 저장되는 고정 슬롯 파일명 (실제 내용은 사용자가 임포트한 gguf).
      * 라운드 무관 고정 — 새 라운드(r3, r4...) gguf를 임포트해도 이 슬롯에 덮어쓴다.
      */
-    const val FILE_NAME = "calendar.Q4_K_M.gguf"
+    const val FILE_NAME = "calendar.Q8_0.gguf"
 
     fun modelFile(ctx: Context): File = File(ctx.getExternalFilesDir(null), FILE_NAME)
 
