@@ -40,15 +40,15 @@ data class ExtractedEvent(
     val confidence: Double,
 )
 
-/** 모델 출력 파싱 결과 (미해석 이벤트). schedule_status 3-way: "yes"|"pending"|"no". */
+/** 모델 출력 파싱 결과 (미해석 이벤트). schedule_status 2-way: "yes"|"no". */
 data class Extraction(
-    val scheduleStatus: String,           // "yes"(확정) | "pending"(예비) | "no"(비일정)
+    val scheduleStatus: String,           // "yes"(확정) | "no"(비일정)
     val events: List<ExtractedEvent>,
     val rawJson: String,
     val parseError: String? = null,
 ) {
-    /** 등록 후보(yes 또는 pending). "no"면 파이프라인이 드롭. */
-    val detected: Boolean get() = scheduleStatus == "yes" || scheduleStatus == "pending"
+    /** 등록 후보("yes"만). "no"면 파이프라인이 드롭. */
+    val detected: Boolean get() = scheduleStatus == "yes"
 }
 
 /** 멀티턴 대화내역의 한 턴. (scripts/_common.build_user_block의 thread_context 원소와 동형) */
@@ -73,7 +73,7 @@ object ScheduleExtractor {
         "title에는 활동/주제만 넣고(누구와·발신자는 앱이 붙임), 소속 기관이 있으면 organizer에 넣습니다.\n" +
         "지정된 JSON 스키마에 맞춰 순수 JSON만 출력하고, 명시되지 않은 정보는 null을 씁니다.\n" +
         "<대화내역>이 있으면 맥락을 참고하되 추출 대상은 마지막 <메시지>이며, 여러 후보가 협의됐다면 가장 최근 합의값을 씁니다.\n" +
-        "schedule_status는 두 질문으로 정합니다. ① 사용자 본인이 직접 갈/할 미래의 일인가? 아니면(거래·결제·적립·배송·광고·인사·과거 회고·남의 일정) \"no\". ② 본인 일이면 — 확정이면 \"yes\", 미확정(안내·초대·제안·신청·마감·미수락)이면 \"pending\". 날짜·시각·금액이 붙어 있어도 본인 일이 아니면 \"no\", 날짜가 없어도 본인 행동이면 \"pending\".\n"
+        "schedule_status는 두 질문으로 정합니다. ① 사용자 본인이 직접 갈/할 미래의 일인가? 아니면(거래·결제·적립·배송·광고·인사·과거 회고·남의 일정) \"no\". ② 본인 일이면 — 나를 특정한 확정 일정(약속·회의·예약·업무 요청·합의 도달)이면 \"yes\". 공고·안내·미수락 제안·미확정이면 \"no\". 날짜·시각이 붙어 있어도 본인 확정 약속이 아니면 \"no\".\n"
 
     private val weekdaysKo = listOf("월", "화", "수", "목", "금", "토", "일")
 
@@ -155,11 +155,11 @@ object ScheduleExtractor {
         val cleaned = stripFences(raw).trim()
         return try {
             val obj = JSONObject(cleaned)
-            // c2 스키마: schedule_status 문자열("yes"|"pending"|"no"). 구 binary(has_schedule)도 폴백 수용.
+            // 스키마: schedule_status 문자열("yes"|"no"). 구 binary(has_schedule), 구 "pending"도 폴백 수용.
             val status = when {
                 obj.has("schedule_status") ->
                     obj.optString("schedule_status", "no").trim().lowercase().let {
-                        if (it == "yes" || it == "pending" || it == "no") it else "no"
+                        if (it == "yes") "yes" else "no"   // pending 포함 나머지는 no
                     }
                 obj.optBoolean("has_schedule", false) -> "yes"   // 구 모델 폴백
                 else -> "no"
