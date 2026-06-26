@@ -50,7 +50,7 @@ object EventRouter {
             if (calId != null) {
                 repo.setStatus(id, EventStatus.AUTO_ADDED, calId)
                 ScheduleNotifier.notifyAutoAdded(appCtx, event, msg, id)
-                Log.d(TAG, "auto-added event $id (status=$effectiveStatus)")
+                Log.d(TAG, "auto-added event $id")
                 return
             }
             Log.w(TAG, "auto-add insert failed → fall back to confirm")
