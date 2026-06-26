@@ -1,7 +1,7 @@
 # 학습 파이프라인 설정 — Qwen3-0.6B (단일 베이스)
 # 사용: python scripts/train_lora.py --config configs/train_qwen3_0_6b.yaml
 # 학습 환경: Colab L4 GPU (단일). merge/quantize는 로컬.
-run_name: c23-qwen3-0.6b-lora
+run_name: c24-qwen3-0.6b-lora
 
 model_config: configs/model_qwen3_0_6b.yaml
 lora_config:  configs/lora.yaml               # target_modules 동일(Qwen3도 q/k/v/o/gate/up/down_proj)
@@ -24,7 +24,7 @@ max_grad_norm: 1.0
 seed: 42
 
 # 출력
-output_dir: models/lora/c23-qwen3-0.6b
+output_dir: models/lora/c24-qwen3-0.6b
 logging_steps: 20
 save_strategy: epoch
 save_total_limit: 2
