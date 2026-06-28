@@ -45,7 +45,17 @@
         android:layout_marginTop="6dp"
         android:orientation="horizontal">
 
-        <!-- 삭제: 항상 활성. 등록됨이면 캘린더에서도 삭제(확인 다이얼로그). -->
+        <!-- 소스: SMS/카톡/Gmail 원본 앱으로 이동 -->
+        <Button
+            android:id="@+id/btnSource"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="@string/act_source" />
+
+        <!-- 삭제: 항상 활성. -->
         <Button
             android:id="@+id/btnPrimary"
             style="?android:attr/buttonBarButtonStyle"
@@ -55,7 +65,7 @@
             android:textColor="@color/btn_accent"
             android:text="@string/act_delete" />
 
-        <!-- 등록: 미등록이면 활성, 등록됨이면 비활성(회색) — 등록 여부를 한눈에. -->
+        <!-- 등록됨이면 [캘린더], 아니면 [등록] -->
         <Button
             android:id="@+id/btnSecondary"
             style="?android:attr/buttonBarButtonStyle"

@@ -12,15 +12,18 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 메인·이벤트함 카드 공용 어댑터. 버튼 두 개:
+ * 메인·이벤트함 카드 공용 어댑터. 버튼 세 개:
+ *   [소스]            — 원본 앱(SMS/카톡/Gmail) 열기.
  *   [삭제]            — 이벤트함에서 제거(등록돼 있으면 캘린더 일정도 함께 삭제).
- *   [등록 ↔ 등록 취소] — 캘린더 등록 토글. 미등록=등록, 등록됨=등록 취소(이벤트함엔 그대로 남음).
+ *   [등록 / 캘린더]   — 미등록이면 캘린더 등록, 등록됨이면 Google Calendar 앱에서 열기.
  * 카드 본문 탭 → 편집 화면.
  */
 class EventAdapter(
     private val onDelete: (DetectedEvent) -> Unit,
     private val onRegister: (DetectedEvent) -> Unit,
     private val onEdit: (DetectedEvent) -> Unit,
+    private val onSource: (DetectedEvent) -> Unit = {},
+    private val onCalendar: (DetectedEvent) -> Unit = {},
 ) : ListAdapter<DetectedEvent, EventAdapter.VH>(DIFF) {
 
     inner class VH(val b: ItemEventBinding) : RecyclerView.ViewHolder(b.root)
@@ -46,21 +49,29 @@ class EventAdapter(
         }
 
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
-        // 메타: 채널 · 수신시각 [· 등록됨]. (c2: confidence 폐지로 신뢰도 표시 제거. 발신자는 제목에 포함, 예비는 상태 표시 없음.)
         val chLabel = when (e.channel) { "sms" -> "SMS"; "kakao" -> "카톡"; "gmail" -> "Gmail"; else -> e.channel }
         b.eventMeta.text = buildString {
             append(chLabel).append(" · ").append(formatReceived(e.receivedAt, e.createdAt))
             if (registered) append(" · 등록됨")
         }
 
-        // 주 버튼 [삭제]: 메인=메인서 제거(+등록취소), 이벤트함=완전삭제. 동작은 화면 핸들러가 결정.
+        // [소스]: 원본 앱 열기
+        b.btnSource.text = ctx.getString(R.string.act_source)
+        b.btnSource.setOnClickListener { onSource(e) }
+
+        // [삭제]
         b.btnPrimary.text = ctx.getString(R.string.act_delete)
         b.btnPrimary.setOnClickListener { onDelete(e) }
 
-        // 등록 ↔ 등록 취소 토글 (등록됨이면 '등록 취소'). 실제 분기는 핸들러가 상태로 처리.
-        b.btnSecondary.text = ctx.getString(if (registered) R.string.act_unregister else R.string.act_add)
+        // [캘린더](등록됨) 또는 [등록](미등록)
+        if (registered) {
+            b.btnSecondary.text = ctx.getString(R.string.act_calendar_view)
+            b.btnSecondary.setOnClickListener { onCalendar(e) }
+        } else {
+            b.btnSecondary.text = ctx.getString(R.string.act_add)
+            b.btnSecondary.setOnClickListener { onRegister(e) }
+        }
         b.btnSecondary.isEnabled = true
-        b.btnSecondary.setOnClickListener { onRegister(e) }
 
         // 편집: 카드 본문 탭.
         b.root.setOnClickListener { onEdit(e) }

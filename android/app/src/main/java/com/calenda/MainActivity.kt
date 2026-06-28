@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(::onDelete, ::onRegister, ::onEdit)
+    private val adapter = EventAdapter(::onDelete, ::onRegister, ::onEdit, ::onSource, ::onCalendar)
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,6 +118,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun onEdit(e: DetectedEvent) {
         startActivity(Intent(this, EventEditActivity::class.java).putExtra(EventEditActivity.EXTRA_ID, e.id))
+    }
+
+    private fun onSource(e: DetectedEvent) {
+        SourceNavigator.openSource(this, e)
+    }
+
+    private fun onCalendar(e: DetectedEvent) {
+        val calId = e.calendarEventId
+        if (calId != null) {
+            SourceNavigator.openCalendarEvent(this, calId)
+        }
     }
 
     private fun addToCalendar(e: DetectedEvent) {
