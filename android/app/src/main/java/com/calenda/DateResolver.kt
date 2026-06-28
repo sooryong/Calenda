@@ -217,21 +217,25 @@ object DateResolver {
         return location
     }
 
-    /** 모델 추출 이벤트 → 캘린더용 CalendarEvent (시각 변환 + 제목 조합 + 장소 등 보존). */
+    /**
+     * 모델 추출 이벤트(플랫 스키마) → 캘린더용 CalendarEvent (시각 변환 + 제목 조합).
+     * attendees/organizer/recurrence는 ev.description에 통합돼 있음.
+     * (_common.resolve_event 미러)
+     */
     fun resolveEvent(receivedAt: String, sender: String?, ev: ExtractedEvent): CalendarEvent {
-        val w = resolveWhen(receivedAt, ev.date, ev.time, ev.endTime, ev.allDay)
-        // location==제목 = 제목을 위치에 복제한 오추출 → 제거 (_common.resolve_event 미러)
-        val loc = dropPersonlikeLocation(ev.location, ev.attendees)?.takeUnless { it.trim() == ev.title?.trim() }
+        val w = resolveWhen(receivedAt, ev.date, ev.time, ev.endTime, false)
+        // location==제목 = 제목을 위치에 복제한 오추출 → 제거
+        val loc = ev.location?.takeUnless { it.trim() == ev.title?.trim() }
         return CalendarEvent(
-            title = composeTitle(ev.title, ev.attendees, ev.organizer, sender, loc),
+            title = composeTitle(ev.title, emptyList(), null, sender, loc),
             start = w.start,
             end = w.end,
             allDay = w.allDay,
             location = loc,
-            attendees = ev.attendees,
+            attendees = emptyList(),
             description = ev.description,
-            recurrence = ev.recurrence,
-            confidence = ev.confidence,
+            recurrence = null,
+            confidence = 0.0,
         )
     }
 }

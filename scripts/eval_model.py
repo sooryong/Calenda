@@ -68,32 +68,20 @@ def location_score(a: str | None, b: str | None) -> float:
     return fuzz.partial_ratio(a, b) / 100.0
 
 
-def _start(received_at, ev: dict) -> str | None:
-    """이벤트의 date/time 토큰 → 절대 start ISO (resolver 경유). 채점 단일 기준."""
-    return resolve_when(received_at, ev.get("date"), ev.get("time"),
-                        ev.get("end_time"), ev.get("all_day", False))["start"]
+def _start_flat(received_at, ev: dict) -> str | None:
+    """플랫 이벤트의 date/time 토큰 → 절대 start ISO (resolver 경유)."""
+    return resolve_when(received_at, ev.get("date"), ev.get("time"), ev.get("end_time"))["start"]
 
 
-def score_events(received_at, gold_events: list, pred_events: list) -> dict:
-    """1:1 매칭. 시각은 gold·pred 모두 resolver로 절대화 후 비교(새 스키마)."""
-    if not gold_events and not pred_events:
-        return {"event_count_match": True, "title_f1": 1.0, "time_f1": 1.0, "loc_f1": 1.0}
-    if len(gold_events) != len(pred_events):
-        return {"event_count_match": False, "title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
-
-    titles, times, locs = [], [], []
-    for g, p in zip(gold_events, pred_events):
-        titles.append(title_score(g.get("title"), p.get("title")))
-        times.append(1.0 if time_match(_start(received_at, g), _start(received_at, p)) else 0.0)
-        locs.append(location_score(g.get("location"), p.get("location")))
-
-    def mean(xs): return sum(xs) / max(1, len(xs))
-    return {
-        "event_count_match": True,
-        "title_f1": mean(titles),
-        "time_f1": mean(times),
-        "loc_f1": mean(locs),
-    }
+def score_fields(received_at, gold: dict, pred: dict) -> dict:
+    """플랫 스키마 채점. is_schedule은 별도 집계, 여기선 추출 품질만.
+    gold·pred 모두 플랫 dict (is_schedule, title, date, time, location, description)."""
+    title_f1 = title_score(gold.get("title"), pred.get("title"))
+    g_start = _start_flat(received_at, gold)
+    p_start = _start_flat(received_at, pred)
+    time_f1 = 1.0 if time_match(g_start, p_start) else 0.0
+    loc_f1  = location_score(gold.get("location"), pred.get("location"))
+    return {"title_f1": title_f1, "time_f1": time_f1, "loc_f1": loc_f1}
 
 
 def load_model(path: str):
@@ -151,13 +139,13 @@ def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512, supp
 def run_eval(samples, infer_fn, out=None, failures_out=None):
     """샘플을 infer_fn(sample)->raw로 추론하고 채점·집계해 metrics 반환.
 
+    플랫 스키마(is_schedule + 개별 필드) 기준.
     eval_model(HF transformers)과 eval_gguf(llama.cpp)가 **동일 채점**을 공유하기 위한
     단일 경로. 추론 방식만 infer_fn으로 주입받고, 점수 계산·집계·실패저장은 여기서 일괄.
     """
     json_valid = 0
-    has_sched_correct = 0
+    is_sched_correct = 0
     field_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
-    event_count_acc = 0
     failures = []
 
     # 디커플링 집계: 검출(recall/specificity)과 추출품질(진짜양성 한정)을 분리해
@@ -166,34 +154,27 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     recall_hit = spec_hit = overfire = missed = 0
     tp_n = 0
     tp_sum = {"title_f1": 0.0, "time_f1": 0.0, "loc_f1": 0.0}
-    # 3-way (yes/pending/no): detected = yes+pending. class_correct = yes/pending 구분까지 맞춤.
-    def _cls(v):
-        if v is True:
-            return "yes"
-        if v in (False, None):
-            return "no"
-        s = str(v).strip().lower()
-        return s if s in ("yes", "pending", "no") else "no"
 
-    def _det(v):
-        return _cls(v) in ("yes", "pending")
-
-    class_both = class_correct = 0  # 양쪽 detected일 때 yes/pending 일치
+    def _has(v) -> bool:
+        """is_schedule 필드 → bool. true/True/"true"/"yes" = True, 나머지 False."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "yes")
+        return False
 
     for sample in tqdm(samples, desc="eval"):
         raw = infer_fn(sample)
         pred = safe_json_loads(raw)
 
         gold = sample["gold"]
-        g_cls = _cls(gold.get("schedule_status"))
-        g_has = g_cls in ("yes", "pending")
+        g_has = _has(gold.get("is_schedule"))
         if g_has:
             pos_total += 1
         else:
             neg_total += 1
 
         if pred is None:
-            # 파싱 실패 = 유효 예측 없음 → 검출 크레딧 없음(양성이면 missed)
             if g_has:
                 missed += 1
             failures.append({**sample, "_pred_raw": raw, "_reason": "json_parse_error"})
@@ -201,16 +182,14 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
 
         json_valid += 1
 
-        p_cls = _cls(pred.get("schedule_status"))
-        p_has = p_cls in ("yes", "pending")
-        if p_cls == g_cls:
-            has_sched_correct += 1                 # 3-way 정확 매치
-        # 검출 분해 (detected = yes+pending)
+        p_has = _has(pred.get("is_schedule"))
+        status_match = (g_has == p_has)
+        if status_match:
+            is_sched_correct += 1
+
+        # 검출 분해 (yes=True / no=False)
         if g_has and p_has:
             recall_hit += 1
-            class_both += 1
-            if p_cls == g_cls:
-                class_correct += 1                 # yes/pending 구분까지 맞춤
         elif (not g_has) and (not p_has):
             spec_hit += 1
         elif (not g_has) and p_has:
@@ -218,22 +197,17 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
         elif g_has and (not p_has):
             missed += 1
 
-        gold_events = gold.get("events", [])
-        pred_events = pred.get("events", [])
-        scores = score_events(sample["received_at"], gold_events, pred_events)
-        if scores["event_count_match"]:
-            event_count_acc += 1
+        scores = score_fields(sample["received_at"], gold, pred)
         for k in field_sum:
             field_sum[k] += scores[k]
 
-        # 추출품질: 올바로 검출된 진짜 양성 & 개수 일치 & gold 이벤트 존재할 때만
-        if g_has and p_has and len(gold_events) == len(pred_events) and gold_events:
+        # 추출품질: 올바로 검출된 진짜 양성 & gold에 title이 있을 때만
+        if g_has and p_has and gold.get("title"):
             tp_n += 1
             for k in tp_sum:
                 tp_sum[k] += scores[k]
 
-        # 실패 임계: schedule_status 오답 OR 추출 품질 미달 (두 필드 동등 기준)
-        status_match = (p_cls == g_cls)
+        # 실패 임계: is_schedule 오답 OR 추출 품질 미달 (두 기준 동등)
         if not status_match or scores["title_f1"] < 0.7 or scores["time_f1"] < 1.0:
             failures.append({**sample, "_pred": pred, "_scores": {**scores, "status_match": status_match}})
 
@@ -241,30 +215,27 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
     metrics = {
         "n": n,
         "json_valid_rate": json_valid / n,
-        "schedule_status_acc": has_sched_correct / n,
+        "is_schedule_acc": is_sched_correct / n,
         "title_f1_avg": field_sum["title_f1"] / n,
         "time_match_rate": field_sum["time_f1"] / n,
         "location_f1_avg": field_sum["loc_f1"] / n,
-        "event_count_acc": event_count_acc / n,
     }
     metrics["final_score"] = (
-        0.30 * metrics["json_valid_rate"]
-        + 0.25 * metrics["schedule_status_acc"]
-        + 0.35 * (
+        0.25 * metrics["json_valid_rate"]
+        + 0.30 * metrics["is_schedule_acc"]
+        + 0.45 * (
             (metrics["title_f1_avg"] + metrics["time_match_rate"] + metrics["location_f1_avg"]) / 3
         )
-        + 0.10 * metrics["event_count_acc"]
     )
 
     # ── 디커플링 지표 (결합 지표의 과소평가 보정 — 라운드별 정직한 추적용) ──
     metrics["detection"] = {
         "n_pos": pos_total,
         "n_neg": neg_total,
-        "recall_pos": recall_hit / max(1, pos_total),       # 일정(yes+pending) 검출 비율
-        "specificity_neg": spec_hit / max(1, neg_total),    # no를 no로 거르는 비율(과발화의 역)
-        "overfire_count": overfire,                          # no→yes/pending 오발화
-        "missed_count": missed,                              # yes/pending→no 누락
-        "class_acc": class_correct / max(1, class_both),    # 검출된 것 중 yes/pending 구분 정확도
+        "recall_pos": recall_hit / max(1, pos_total),       # is_schedule=true 검출 비율
+        "specificity_neg": spec_hit / max(1, neg_total),    # no를 no로 거르는 비율
+        "overfire_count": overfire,                          # false→true 오발화
+        "missed_count": missed,                              # true→false 누락
     }
     metrics["extraction_on_true_positives"] = {              # 올바로 검출된 양성에 한한 추출 품질
         "n": tp_n,

@@ -14,7 +14,7 @@ data class CalendarEvent(
     val location: String?,
     val attendees: List<String>,
     val description: String?,
-    val recurrence: String?, // RRULE
+    val recurrence: String?, // RRULE (description에서 파싱 가능하지만 CalendarWriter에서 사용)
     val confidence: Double,
 )
 
@@ -25,30 +25,28 @@ data class TimeOfDay(
     val marker: String?,     // 오전/오후/저녁/밤/낮/정오/자정 또는 null
 )
 
-/** 모델이 추출한 '미해석' 일정 (date/time 토큰). DateResolver.resolveEvent로 CalendarEvent화. */
+/**
+ * 모델이 추출한 '미해석' 일정 (플랫 스키마). DateResolver.resolveEvent로 CalendarEvent화.
+ * attendees/organizer/recurrence는 description 통합 필드에 포함됨.
+ */
 data class ExtractedEvent(
-    val title: String,       // 활동/주제만 (누구와·발신자는 앱이 조합)
+    val title: String?,      // 메시지 자연 제목(시간 제외), null이면 일정 없음
     val date: String?,       // 상대 토큰 | "YYYY-MM-DD" | null
     val time: TimeOfDay?,
     val endTime: TimeOfDay?,
-    val allDay: Boolean,
     val location: String?,
-    val attendees: List<String>,
-    val organizer: String?,
-    val description: String?,
-    val recurrence: String?,
-    val confidence: Double,
+    val description: String?,  // 참석자·주최자·반복·URL 등 통합
 )
 
-/** 모델 출력 파싱 결과 (미해석 이벤트). schedule_status 2-way: "yes"|"no". */
+/** 모델 출력 파싱 결과. 플랫 스키마 is_schedule + 단일 ExtractedEvent. */
 data class Extraction(
-    val scheduleStatus: String,           // "yes"(확정) | "no"(비일정)
-    val events: List<ExtractedEvent>,
+    val isSchedule: Boolean,           // true=확정 일정, false=비일정
+    val event: ExtractedEvent?,        // 추출된 필드 (is_schedule=false여도 존재 가능)
     val rawJson: String,
     val parseError: String? = null,
 ) {
-    /** 등록 후보("yes"만). "no"면 파이프라인이 드롭. */
-    val detected: Boolean get() = scheduleStatus == "yes"
+    /** 캘린더 등록 후보 (is_schedule=true). false면 파이프라인이 드롭. */
+    val detected: Boolean get() = isSchedule
 }
 
 /** 멀티턴 대화내역의 한 턴. (scripts/_common.build_user_block의 thread_context 원소와 동형) */
@@ -64,16 +62,16 @@ data class ThreadTurn(
  */
 object ScheduleExtractor {
 
-    // ★ configs/model_qwen.yaml의 system_prompt와 글자까지 동일해야 함 (학습/추론 분포 일치).
-    //   YAML 블록 스칼라(|)라 줄바꿈 보존 + 끝에 개행 1개. 아래도 동일하게 맞춤.
+    // ★ configs/model_qwen3_0_6b.yaml의 system_prompt와 글자까지 동일해야 함 (학습/추론 분포 일치).
     private const val SYSTEM_PROMPT =
         "당신은 메시지에서 일정 정보를 추출하는 모델입니다. 날짜·시각을 계산하지 말고 표현 그대로 추출합니다.\n" +
         "date: 상대 날짜는 토큰으로(내일·모레·글피·다음주화·1주후·1개월후 등), 명시 날짜는 YYYY-MM-DD, 없으면 null.\n" +
         "time: {hour, minute, marker} 객체로 추출(marker는 오전·오후·저녁·밤·낮·정오·자정 또는 null). 24시간 변환 금지.\n" +
-        "title에는 활동/주제만 넣고(누구와·발신자는 앱이 붙임), 소속 기관이 있으면 organizer에 넣습니다.\n" +
-        "지정된 JSON 스키마에 맞춰 순수 JSON만 출력하고, 명시되지 않은 정보는 null을 씁니다.\n" +
+        "title에는 메시지의 일정 제목/주제를 시간 표현만 제외하고 최대한 그대로 보존합니다. 발신인 태그는 앱이 붙입니다.\n" +
+        "description에는 참석자·주최자·반복일정·전화번호·URL·준비물 등 부가 정보를 통합합니다.\n" +
+        "지정된 플랫 JSON 스키마에 맞춰 순수 JSON만 출력하고, 명시되지 않은 정보는 null을 씁니다.\n" +
         "<대화내역>이 있으면 맥락을 참고하되 추출 대상은 마지막 <메시지>이며, 여러 후보가 협의됐다면 가장 최근 합의값을 씁니다.\n" +
-        "schedule_status는 두 질문으로 정합니다. ① 사용자 본인이 직접 갈/할 미래의 일인가? 아니면(거래·결제·적립·배송·광고·인사·과거 회고·남의 일정) \"no\". ② 본인 일이면 — 나를 특정한 확정 일정(약속·회의·예약·업무 요청·합의 도달)이면 \"yes\". 공고·안내·미수락 제안·미확정이면 \"no\". 날짜·시각이 붙어 있어도 본인 확정 약속이 아니면 \"no\".\n"
+        "is_schedule은 두 질문으로 정합니다. ① 사용자 본인이 직접 갈/할 미래의 일인가? 아니면(거래·결제·배송·광고·인사·과거·남의 일정) false. ② 본인 일이면 — 나를 특정한 확정 일정(약속·회의·예약·업무 요청·합의 도달)이면 true. 공고·안내·미수락 제안이면 false. is_schedule=false여도 title/date/time/location 등 추출 가능한 필드는 채웁니다.\n"
 
     private val weekdaysKo = listOf("월", "화", "수", "목", "금", "토", "일")
 
@@ -150,48 +148,68 @@ object ScheduleExtractor {
         return arr.toString()
     }
 
-    /** 모델 raw 출력에서 JSON 추출 + 파싱(새 스키마: date 토큰 + time 객체). 코드펜스 있으면 제거. */
+    /**
+     * 모델 raw 출력에서 JSON 추출 + 파싱 (플랫 스키마: is_schedule + 개별 필드).
+     * 구 스키마(schedule_status + events[]) 폴백도 수용해 배포본 c2v13과 호환.
+     */
     fun parse(raw: String): Extraction {
         val cleaned = stripFences(raw).trim()
         return try {
             val obj = JSONObject(cleaned)
-            // 스키마: schedule_status 문자열("yes"|"no"). 구 binary(has_schedule), 구 "pending"도 폴백 수용.
-            val status = when {
-                obj.has("schedule_status") ->
-                    obj.optString("schedule_status", "no").trim().lowercase().let {
-                        if (it == "yes") "yes" else "no"   // pending 포함 나머지는 no
+
+            // ── is_schedule 판정 (플랫 신규 → 구 schedule_status → 구 has_schedule 순) ──
+            val isSchedule = when {
+                obj.has("is_schedule") -> {
+                    val v = obj.opt("is_schedule")
+                    when (v) {
+                        is Boolean -> v
+                        is String  -> v.trim().lowercase() in listOf("true", "yes")
+                        else       -> false
                     }
-                obj.optBoolean("has_schedule", false) -> "yes"   // 구 모델 폴백
-                else -> "no"
-            }
-            val events = mutableListOf<ExtractedEvent>()
-            val arr = obj.optJSONArray("events")
-            if (arr != null) {
-                for (i in 0 until arr.length()) {
-                    val e = arr.getJSONObject(i)
-                    val attendees = mutableListOf<String>()
-                    e.optJSONArray("attendees")?.let { for (j in 0 until it.length()) attendees.add(it.getString(j)) }
-                    events.add(
-                        ExtractedEvent(
-                            title = e.optString("title", ""),
-                            date = e.optStringOrNull("date"),
-                            time = parseTimeObj(e, "time"),
-                            endTime = parseTimeObj(e, "end_time"),
-                            allDay = parseTimeObj(e, "time") == null,
-                            location = e.optStringOrNull("location"),
-                            attendees = attendees,
-                            organizer = e.optStringOrNull("organizer"),
-                            description = e.optStringOrNull("description"),
-                            recurrence = e.optStringOrNull("recurrence"),
-                            confidence = e.optDouble("confidence", 0.0),
-                        )
-                    )
                 }
+                obj.has("schedule_status") -> {
+                    obj.optString("schedule_status", "no").trim().lowercase() == "yes"
+                }
+                else -> obj.optBoolean("has_schedule", false)
             }
-            Extraction(status, events, cleaned)
+
+            // ── 필드 소스 결정: 플랫(최상위) 우선, 없으면 events[0] 폴백 ──
+            val src: org.json.JSONObject = when {
+                obj.has("title") || obj.has("date") || obj.has("time") -> obj
+                obj.optJSONArray("events")?.length() ?: 0 > 0 -> obj.optJSONArray("events")!!.getJSONObject(0)
+                else -> obj
+            }
+
+            val event = ExtractedEvent(
+                title       = src.optStringOrNull("title"),
+                date        = src.optStringOrNull("date"),
+                time        = parseTimeObj(src, "time"),
+                endTime     = parseTimeObj(src, "end_time"),
+                location    = src.optStringOrNull("location"),
+                description = buildDescription(src),
+            )
+
+            Extraction(isSchedule, event, cleaned)
         } catch (ex: Exception) {
-            Extraction("no", emptyList(), cleaned, parseError = ex.message ?: "parse error")
+            Extraction(false, null, cleaned, parseError = ex.message ?: "parse error")
         }
+    }
+
+    /**
+     * description 필드 조합.
+     * 플랫 스키마: description 그대로.
+     * 구 스키마 폴백: attendees + organizer + recurrence → 한 필드로 병합.
+     */
+    private fun buildDescription(e: org.json.JSONObject): String? {
+        val parts = mutableListOf<String>()
+        e.optStringOrNull("description")?.let { parts.add(it) }
+        // 구 스키마 폴백 (배포본 c2v13 호환)
+        val atts = mutableListOf<String>()
+        e.optJSONArray("attendees")?.let { for (i in 0 until it.length()) atts.add(it.getString(i)) }
+        if (atts.isNotEmpty()) parts.add("참석자: ${atts.joinToString(", ")}")
+        e.optStringOrNull("organizer")?.let { parts.add("주최: $it") }
+        e.optStringOrNull("recurrence")?.let { parts.add("반복: $it") }
+        return parts.joinToString("\n").ifEmpty { null }
     }
 
     /** time/end_time 파싱: 객체 {hour,minute,marker} 우선, "HH:MM" 문자열도 허용. */

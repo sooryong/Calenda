@@ -267,28 +267,24 @@ def _drop_personlike_location(location, attendees):
     return location
 
 
-def resolve_event(received_at, sender, event: dict, channel=None) -> dict:
-    """모델 이벤트(date/time 토큰) → 캘린더용 완성 이벤트.
-    시각은 resolve_when으로 절대화, location/attendees/organizer/description/recurrence는 그대로 통과,
-    제목은 compose_title로 조합. ★ location 등 어떤 필드도 누락 없이 캐리."""
+def resolve_event(received_at, sender, pred: dict, channel=None) -> dict:
+    """모델 플랫 출력(date/time 토큰) → 캘린더용 완성 이벤트.
+    ★ 새 스키마: is_schedule + 개별 필드 (attendees/organizer/recurrence → description 통합).
+    시각은 resolve_when으로 절대화, title은 compose_title로 발신인 태그 추가."""
     when = resolve_when(
-        received_at, event.get("date"), event.get("time"),
-        event.get("end_time"),
+        received_at, pred.get("date"), pred.get("time"),
+        pred.get("end_time"),
     )
-    loc = _drop_personlike_location(event.get("location"), event.get("attendees", []))  # 사람 이름 오추출 제거
-    if loc and loc.strip() == (event.get("title") or "").strip():
-        loc = None   # location이 제목과 완전 동일 = 제목을 위치에 복제한 오추출 → 제거
+    loc = pred.get("location") or None
+    if loc and loc.strip() == (pred.get("title") or "").strip():
+        loc = None   # location이 제목과 완전 동일 → 오추출 제거
     return {
-        "title": compose_title(event.get("title"), event.get("attendees"),
-                               event.get("organizer"), sender, channel, location=loc),
+        "title": compose_title(pred.get("title"), sender=sender, channel=channel),
         "start": when["start"],
         "end": when["end"],
         "all_day": when["all_day"],
         "location": loc,
-        "attendees": event.get("attendees", []),
-        "organizer": event.get("organizer"),
-        "description": event.get("description"),
-        "recurrence": event.get("recurrence"),
+        "description": pred.get("description"),
     }
 
 

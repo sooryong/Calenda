@@ -78,29 +78,29 @@ object MessagePipeline {
             Log.w(TAG, "parse error: ${ext.parseError}")
             return
         }
-        // schedule_status="no"(거래·통보·광고·인사 등 비일정)면 아무것도 안 함. yes/pending만 진행.
-        if (ext.detected && ext.events.isNotEmpty()) {
-            // 제목 출처(' · 발신자'): 내가 보낸 게 트리거면 "나"가 아니라 상대(counterpart)를 출처로.
+        // is_schedule=false(비일정)면 아무것도 안 함. true만 캘린더 등록 후보.
+        val ev = ext.event
+        if (ext.detected && ev != null) {
+            // 제목 출처: 내가 보낸 게 트리거면 "나"가 아니라 상대(counterpart)를 출처로.
             val titleSender = if (msg.fromMe) msg.counterpart.ifBlank { null } else msg.sender
             // 미해석 토큰 → 절대 시각 + 조합 제목 (앱이 계산), 그 뒤 개인 별칭맵으로 location 보정
             val event = AliasStore.from(appCtx).correctLocation(
                 titleSender ?: msg.sender,
-                DateResolver.resolveEvent(receivedAt, titleSender, ext.events.first()),
+                DateResolver.resolveEvent(receivedAt, titleSender, ev),
             )
             // 이벤트함에 영속화(상태=대기). 중복(dedupeKey)이면 null → 알림 생략.
             // receivedAt/modelRawJson/threadJson = incremental-learning 페어 재구성용 캡처.
-            // 등록 정책(고신뢰도 자동 추가 / 저신뢰도 확인)은 EventRouter가 결정.
             val repo = EventRepository.from(appCtx)
             val id = repo.save(
                 event, msg.channel, msg.sender, msg.body, EventStatus.PENDING,
                 receivedAt = receivedAt,
                 modelRawJson = ext.rawJson,
                 threadJson = ScheduleExtractor.threadToJson(thread),
-                baseTitle = ext.events.first().title.trim(),   // 모델 원제목(조합 전) — 그룹 누적 병합 키
+                baseTitle = (ev.title ?: "").trim(),   // 모델 원제목(조합 전) — 그룹 누적 병합 키
                 room = msg.room,
             )
             if (id != null) {
-                EventRouter.route(appCtx, repo, id, event, msg, ext.scheduleStatus)
+                EventRouter.route(appCtx, repo, id, event, msg, if (ext.isSchedule) "yes" else "no")
             } else {
                 Log.d(TAG, "duplicate event — skip")
             }
