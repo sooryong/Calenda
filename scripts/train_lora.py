@@ -125,15 +125,15 @@ def main():
     # AMP autocast/GradScaler로 fp16 연산(T4 텐서코어, 빠름)을 함. 순수 fp16 로드(언더플로/불안정)
     # 대신 이 방식이 fp16 속도 + bf16급 안정성. (bf16 모드는 그대로 bf16 로드 — 범위 넓어 안전)
     load_dtype = torch.bfloat16 if cfg.get("bf16") else torch.float32
-    # DDP(torchrun)면 device_map 미사용 — 각 프로세스가 자기 GPU로 로드하도록 Trainer에 맡김
-    # (device_map='auto'는 분산모드에서 모델을 쪼개거나 에러 → DDP에선 None).
     _ddp = os.environ.get("LOCAL_RANK") is not None
+    _hf_token = os.environ.get("HF_TOKEN") or None
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg["hf_id"],
-        torch_dtype=load_dtype,
+        dtype=load_dtype,
         device_map=(None if _ddp else "auto"),
         trust_remote_code=model_cfg.get("trust_remote_code", False),
         quantization_config=bnb,
+        token=_hf_token,
     )
     model.config.use_cache = False
 
@@ -163,7 +163,7 @@ def main():
         num_train_epochs=cfg["num_train_epochs"],
         learning_rate=cfg["learning_rate"],
         lr_scheduler_type=cfg["lr_scheduler_type"],
-        warmup_ratio=cfg["warmup_ratio"],
+        warmup_ratio=cfg.get("warmup_ratio", 0.05),
         weight_decay=cfg["weight_decay"],
         max_grad_norm=cfg["max_grad_norm"],
         seed=cfg["seed"],
@@ -212,33 +212,43 @@ def main():
     _use_completion_only = cfg.get("completion_only_loss")
     _resp = model_cfg.get("response_template", "<|im_start|>assistant\n")
 
-    # TRL < 1.x: DataCollatorForCompletionOnlyLM (data_collator 방식)
-    # TRL >= 1.x: train_on_responses_only (trainer wrap 방식)
     _collator_set = False
     if _use_completion_only:
         _resp_ids = tokenizer.encode(_resp, add_special_tokens=False)
-        for _mod in ("trl", "trl.trainer", "trl.trainer.utils", "trl.data_utils"):
-            try:
-                import importlib
-                _DataCollator = getattr(importlib.import_module(_mod), "DataCollatorForCompletionOnlyLM")
-                trainer_kwargs["data_collator"] = _DataCollator(
-                    response_template=_resp_ids, tokenizer=tokenizer,
-                )
-                print(f"[train] completion-only ON (collator/{_mod}) template={_resp!r} ids={_resp_ids}")
-                _collator_set = True
-                break
-            except (ImportError, AttributeError):
-                continue
+        # 방법 1: train_on_responses_only (trl >= 0.12 권장)
+        # 방법 2: DataCollatorForCompletionOnlyLM (구버전 fallback)
+        # 방법 3: 직접 찾기 (중간 버전 경로 편차 대응)
+        _completion_fn = None
+        try:
+            from trl import train_on_responses_only as _completion_fn
+        except ImportError:
+            pass
+
+        if _completion_fn is None:
+            # DataCollatorForCompletionOnlyLM 경로 탐색
+            import importlib
+            for _mod in ("trl", "trl.trainer.utils", "trl.trainer", "trl.data_utils"):
+                try:
+                    _DC = getattr(importlib.import_module(_mod), "DataCollatorForCompletionOnlyLM")
+                    trainer_kwargs["data_collator"] = _DC(response_template=_resp_ids, tokenizer=tokenizer)
+                    print(f"[train] completion-only ON (DataCollatorForCompletionOnlyLM/{_mod}) template={_resp!r}")
+                    _collator_set = True
+                    break
+                except (ImportError, AttributeError):
+                    continue
 
     trainer = SFTTrainer(**trainer_kwargs)
 
     if _use_completion_only and not _collator_set:
-        try:
-            from trl import train_on_responses_only
-            trainer = train_on_responses_only(trainer, response_template=_resp)
-            print(f"[train] completion-only ON (train_on_responses_only) template={_resp!r}")
-        except (ImportError, Exception) as e:
-            print(f"[train] WARNING: completion-only 설정 실패({e}), 전체 토큰 학습으로 진행")
+        if _completion_fn is not None:
+            try:
+                trainer = _completion_fn(trainer, response_template=_resp)
+                print(f"[train] completion-only ON (train_on_responses_only) template={_resp!r}")
+                _collator_set = True
+            except Exception as e:
+                print(f"[train] WARNING: train_on_responses_only 실패({e}), 전체 토큰 학습으로 진행")
+        else:
+            print(f"[train] WARNING: completion-only 설정 불가(trl 버전 미지원), 전체 토큰 학습으로 진행")
 
     trainer.train()
     trainer.save_model(cfg["output_dir"])
