@@ -215,40 +215,73 @@ def main():
     _collator_set = False
     if _use_completion_only:
         _resp_ids = tokenizer.encode(_resp, add_special_tokens=False)
-        # 방법 1: train_on_responses_only (trl >= 0.12 권장)
-        # 방법 2: DataCollatorForCompletionOnlyLM (구버전 fallback)
-        # 방법 3: 직접 찾기 (중간 버전 경로 편차 대응)
-        _completion_fn = None
-        try:
-            from trl import train_on_responses_only as _completion_fn
-        except ImportError:
-            pass
 
-        if _completion_fn is None:
-            # DataCollatorForCompletionOnlyLM 경로 탐색
+        # 방법 1: train_on_responses_only (trl >= 0.12)
+        try:
+            from trl import train_on_responses_only as _toro
+            _toro_fn = _toro
+        except ImportError:
+            _toro_fn = None
+
+        # 방법 2: DataCollatorForCompletionOnlyLM (trl 0.3~0.13)
+        if not _collator_set and _toro_fn is None:
             import importlib
             for _mod in ("trl", "trl.trainer.utils", "trl.trainer", "trl.data_utils"):
                 try:
                     _DC = getattr(importlib.import_module(_mod), "DataCollatorForCompletionOnlyLM")
                     trainer_kwargs["data_collator"] = _DC(response_template=_resp_ids, tokenizer=tokenizer)
-                    print(f"[train] completion-only ON (DataCollatorForCompletionOnlyLM/{_mod}) template={_resp!r}")
+                    print(f"[train] completion-only ON (DataCollatorForCompletionOnlyLM/{_mod})")
                     _collator_set = True
                     break
                 except (ImportError, AttributeError):
                     continue
 
+        # 방법 3: 직접 구현 (trl 버전 무관 최종 fallback)
+        if not _collator_set and _toro_fn is None:
+            _pad_id = tokenizer.pad_token_id or tokenizer.eos_token_id
+            _ign = -100
+            _tids = list(_resp_ids)
+            _tlen = len(_tids)
+
+            class _CompletionCollator:
+                def __call__(self, features):
+                    import torch
+                    max_len = max(len(f["input_ids"]) for f in features)
+                    iids, lbls, atts = [], [], []
+                    for f in features:
+                        ids = list(f["input_ids"])
+                        lab = [_ign] * len(ids)
+                        for i in range(len(ids) - _tlen + 1):
+                            if ids[i:i + _tlen] == _tids:
+                                for j in range(i + _tlen, len(ids)):
+                                    lab[j] = ids[j]
+                                break
+                        pad = max_len - len(ids)
+                        iids.append(ids + [_pad_id] * pad)
+                        lbls.append(lab + [_ign] * pad)
+                        atts.append(list(f.get("attention_mask", [1] * len(ids))) + [0] * pad)
+                    return {
+                        "input_ids": torch.tensor(iids, dtype=torch.long),
+                        "labels": torch.tensor(lbls, dtype=torch.long),
+                        "attention_mask": torch.tensor(atts, dtype=torch.long),
+                    }
+
+            trainer_kwargs["data_collator"] = _CompletionCollator()
+            print(f"[train] completion-only ON (직접 구현) template={_resp!r} ids={_resp_ids}")
+            _collator_set = True
+
     trainer = SFTTrainer(**trainer_kwargs)
 
+    if _use_completion_only and not _collator_set and _toro_fn is not None:
+        try:
+            trainer = _toro_fn(trainer, response_template=_resp)
+            print(f"[train] completion-only ON (train_on_responses_only) template={_resp!r}")
+            _collator_set = True
+        except Exception as e:
+            print(f"[train] WARNING: train_on_responses_only 실패({e}), 전체 토큰 학습으로 진행")
+
     if _use_completion_only and not _collator_set:
-        if _completion_fn is not None:
-            try:
-                trainer = _completion_fn(trainer, response_template=_resp)
-                print(f"[train] completion-only ON (train_on_responses_only) template={_resp!r}")
-                _collator_set = True
-            except Exception as e:
-                print(f"[train] WARNING: train_on_responses_only 실패({e}), 전체 토큰 학습으로 진행")
-        else:
-            print(f"[train] WARNING: completion-only 설정 불가(trl 버전 미지원), 전체 토큰 학습으로 진행")
+        print("[train] WARNING: completion-only 모든 방법 실패, 전체 토큰 학습으로 진행")
 
     trainer.train()
     trainer.save_model(cfg["output_dir"])
