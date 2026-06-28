@@ -96,34 +96,30 @@ calenda/
 
 전체 시스템이 이 스키마를 공유한다. **상세·토큰 어휘·resolver 표는 반드시 `prompts/schema.md`를 읽어라.** 여기는 요약만.
 
-★ **핵심 설계: 모델은 날짜·시각을 "계산"하지 않고 표면형만 "추출"한다.** 0.5B는 요일→날짜(주말 횡단)·AM/PM→24h 산술을 못 맞히므로, 모델은 `date`(상대 토큰) + `time`(시·분·표시어)만 내고, **절대 시각 계산은 resolver가 결정론적으로 수행**한다:
+★ **현재 스키마 = 플랫 7-필드, 단일 이벤트.** (구 `has_schedule`+`events[]` 중첩, `marker`/`attendees`/`organizer`/`confidence`/`recurrence`/`all_day`는 폐지.)
+
+★ **핵심 설계: 모델은 날짜·시각을 "계산"하지 않고 표면형만 "추출"한다.** 0.6B는 요일→날짜(주말 횡단)·AM/PM→24h 산술을 못 맞히므로, 모델은 `date`(상대 토큰) + `time`(시·분·표시어)만 내고, **절대 시각 계산은 resolver가 결정론적으로 수행**한다:
 - Python: `scripts/_common.py` → `resolve_when` / `resolve_event` / `compose_title`
 - Kotlin(앱): `android/.../DateResolver.kt` (위 Python의 미러 — 둘이 같은 표를 공유)
 
 ```json
 {
-  "has_schedule": true,
-  "events": [
-    {
-      "title": "주간 회의",
-      "date": "내일",
-      "time": { "hour": 3, "minute": 0, "marker": null },
-      "end_time": null,
-      "all_day": false,
-      "location": "회사 3층",
-      "attendees": ["박과장"],
-      "organizer": null,
-      "description": null,
-      "recurrence": null,
-      "confidence": 0.95
-    }
-  ]
+  "is_schedule": true,
+  "title": "AWS 교육팀 줌회의",
+  "date": "내일",
+  "time": { "hour": 1, "minute": 0, "marker": "오후" },
+  "end_time": null,
+  "location": "줌",
+  "description": null
 }
 ```
 
+- `is_schedule`: **나의 확정 일정**이면 `true`, 거래·통보·광고·미수락 제안·공고·안내·과거이면 `false`. 분류 기준 = `prompts/schedule_criterion.md`.
 - `date`: 상대 토큰(`내일`,`다음주화`,`1주후`,`이번주말`…) 또는 명시된 절대일자(`"2026-06-05"`) 또는 null. **모델은 절대일자 계산 금지.**
-- `time`: `{hour, minute, marker}` (marker=`오전`/`오후`/`저녁`/`정오`… 또는 null). 24h 변환은 resolver가.
-- `title`: 활동/주제만(예: `저녁식사`). "누구와"·발신자 소속은 `compose_title`이 조합 → `민지와 저녁식사`, `주간 회의 · 박과장`.
+- `time`: `{hour, minute, marker}` 또는 null(미상·종일). marker=`오전`/`오후`/`저녁`/`정오`… 또는 null. 24h 변환은 resolver가.
+- `title`: 메시지의 일정 제목/주제를 **시간 표현만 제외하고 최대한 보존**(활동-only 분해 금지). `is_schedule=false`여도 주제를 제목으로 추출.
+- `location`/`description`: 있으면 채움, 없으면 null. **제목을 location에 복제 금지.** 참석자·주최자·반복·URL·전화번호 등 부가정보는 `description`에 통합.
+- ★ **`sender`/`channel`/`received_at`은 모델 출력이 아니라 앱·데이터 페어가 캡처하는 메타데이터**다(입력 블록에 주입, gold JSON엔 없음). 앱 카드/`compose_title`이 발신인 태그로 사용.
 
 ### 입력 포맷 (학습/추론) — `_common.build_user_block`이 렌더
 ```
@@ -136,7 +132,7 @@ calenda/
 ```
 → 모델은 위 스키마 JSON만 출력 (코드펜스 없는 순수 JSON). 위 예 기대 출력: `"date":"내일", "time":{"hour":3,"minute":0,"marker":null}` → resolver가 받은 14:30 기준 "3시"→15:00, 2026-05-26으로 변환.
 
-**멀티턴(대화내역)**: 일정 협의가 여러 메시지에 걸치면 앱이 직전 3~5개를 `<대화내역>` 블록으로 함께 넣는다. 최종 메시지가 확정 응답("좋습니다")이면 직전 제안 시각을 추출(`has_schedule=true`), 새 제안·유보면 false. 형식은 `build_user_block`이 학습·평가·앱 공용으로 렌더 — 바꾸면 세 곳을 함께 바꿔야 한다. 상세는 `prompts/schema.md`.
+**멀티턴(대화내역)**: 일정 협의가 여러 메시지에 걸치면 앱이 직전 3~5개를 `<대화내역>` 블록으로 함께 넣는다. 최종 메시지가 확정 응답("좋습니다")이면 직전 제안 시각을 추출(`is_schedule=true`), 새 제안·유보면 false. 형식은 `build_user_block`이 학습·평가·앱 공용으로 렌더 — 바꾸면 세 곳을 함께 바꿔야 한다. 상세는 `prompts/schema.md`.
 
 ---
 
@@ -225,15 +221,13 @@ streamlit run ui/streamlit_app.py
 
 ## 10. 현재 개발 단계
 
-상세·다음 할 일은 `HANDOFF.md` 참조. 요약 (2026-05-31):
-- ✅ 데이터 파이프라인 + 골든셋(51건) 완성. `train.jsonl` 2245건(base 1775 + weekend 250 + cowork 100 + thread 120) git 추적.
-- ✅ **extract-resolve 스키마 마이그레이션 완료** (모델=추출, resolver=계산). `_common`/`DateResolver` 양쪽 구현.
-- ✅ **멀티턴(대화내역) 학습/평가/앱 배선** — `build_user_block` 공용.
-- ✅ 최적 레시피 확정: **bf16 + base 2245**(discipline 보강 빼기). Kaggle T4x2 DDP로 ~56분. → **r11 = golden 0.905 / time_match 0.788** (배포본).
-- ✅ r11 merge → quantize(`calendar.Q4_K_M.gguf`, 380MB) 완료.
-- ✅ Android 앱: SMS/카톡 자동 수집 + 새 스키마/DateResolver 빌드.
-- ⏳ **폰 배포** — Q4_K_M gguf 폰 임포트 + Android Studio 재빌드 + 온디바이스 검증(토 "내일"→일).
-- ⏳ 다음 라운드: location 오추출(사람 이름이 장소로) 등 소량·다양 음성으로 보강.
+상세·다음 할 일은 `HANDOFF.md`, 과거 라운드 이력은 `ARCHIVE.md` 참조. 요약 (2026-06-29):
+- ✅ **방향 전환**: 합성 라운드(r11~r34·c1/c2/c9 계열) 전부 폐기 → **실제 SMS/카톡/Gmail 수집 데이터**로 재구축. `data/raw/`에 실메시지 풀.
+- ✅ **플랫 스키마 마이그레이션 완료**: `is_schedule`(bool) + `title/date/time/end_time/location/description` 단일 이벤트. `prompts/schema.md`·`schedule_criterion.md`(yes/no 2-way)·`eval_model.py`·앱(`ScheduleExtractor`/`DateResolver`) 전부 플랫.
+- ✅ **extract-resolve 유지**: 모델=추출, resolver=계산. `_common`↔`DateResolver` 미러. 멀티턴 `build_user_block` 공용.
+- ⏳ **현재: d8 학습 단계.** `configs/train_qwen3_0_6b.yaml` run_name=`d8-qwen3-0.6b-lora`, epochs=3. `train.jsonl` **371건**(is_schedule true/false 혼합) · `golden.jsonl` **50건**. → push → Kaggle/Colab 학습 → merge → eval → Q8_0 양자화.
+- 🟡 **배포본은 아직 c2v13 Q8_0**(구 3-way). 앱이 구스키마 폴백으로 호환 중. d8 학습·평가 통과 후 교체 예정.
+- ✅ **앱 카드 UI 개편**: 카드 탭 → 원본 메시지 앱 열기(SMS는 발신자 대화방 딥링크), 발신자 필수 표시 + 장소·설명, 버튼 [삭제]·[등록하기]/[등록취소]. (구 [소스]·[캘린더] 버튼·카드탭→편집 폐지)
 
 ---
 
@@ -243,3 +237,4 @@ streamlit run ui/streamlit_app.py
 - 프롬프트 본문: `prompts/{planner,generator,evaluator}.md`
 - 환경 설정 트러블슈팅: `SETUP.md`
 - 지금 당장 할 일: `HANDOFF.md`
+- 과거 라운드 이력(r11~r34·c1/c2/c9·d5~ 진단·설계): `ARCHIVE.md`
