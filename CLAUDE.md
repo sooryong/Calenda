@@ -1,8 +1,8 @@
 # Calendar Agent — 프로젝트 가이드 (Claude Code용)
 
-> 이 파일은 Claude Code가 세션 시작 시 자동으로 읽는 프로젝트 컨텍스트다.
-> **사용자에게 코드를 짜주기 전에 반드시 이 파일과 `prompts/schema.md`를 먼저 읽어라.**
-> 새 세션에서 막막하면 `HANDOFF.md`를 먼저 보면 지금 무엇을 해야 하는지 정확히 적혀 있다.
+> 이 파일은 Claude Code가 세션 시작 시 자동으로 읽는 **단일 정본**이다. 프로젝트 컨텍스트·현재 단계·다음 할 일·운영 절차가 모두 여기 있다.
+> **코드를 짜기 전에 반드시 이 파일과 `prompts/schema.md`를 먼저 읽어라.**
+> "지금 무엇을 할 것인가"는 §12(현재 단계 + 다음 할 일)를 보면 된다.
 
 ---
 
@@ -38,56 +38,53 @@
   - 모델 Judge (`scripts/eval_model.py` 내부, Sonnet): 학습된 모델 출력 평가 (규칙 기반 + LLM judge 혼합)
 - **Harness**: 학습(`train_lora.py`) → merge(`merge_lora.py`) → 양자화(`quantize.sh`) → 평가 루프
 
+> 현재는 합성 생성보다 **실제 수집 메시지(`data/raw/`)를 직접 라벨링**하는 방식이 주력이다(§12).
+
 ---
 
 ## 3. 디렉토리 구조
 
 ```
 calenda/
-├── CLAUDE.md             ← 이 파일
-├── HANDOFF.md            ← 지금 당장 할 일 (세션 시작 시 같이 봐라)
+├── CLAUDE.md             ← 이 파일 (단일 정본)
 ├── README.md             ← 사람용 개요
 ├── SETUP.md              ← 환경 구축 가이드
 ├── pyproject.toml        ← Python 3.10~3.14 지원 (학습 단계는 3.11 권장)
 ├── .env                  ← ANTHROPIC_API_KEY (gitignore)
-├── .env.example
 │
 ├── prompts/              ← ★ 모델 호출 프롬프트 (수정 시 신중)
-│   ├── schema.md         ← 단일 출력 JSON 스키마 (반드시 먼저 읽기)
-│   ├── planner.md        ← Planner system/user 프롬프트
-│   ├── generator.md      ← Generator + few-shot 예시 7개
-│   └── evaluator.md      ← 데이터 QA + 모델 Judge 프롬프트
+│   ├── schema.md             ← 단일 출력 JSON 스키마 (반드시 먼저 읽기)
+│   ├── schedule_criterion.md ← is_schedule 분류 기준 (SOT)
+│   ├── planner.md            ← Planner system/user 프롬프트
+│   ├── generator.md          ← Generator + few-shot
+│   └── evaluator.md          ← 데이터 QA + 모델 Judge 프롬프트
 │
 ├── scripts/
-│   ├── _common.py        ← Anthropic 호출, JSONL I/O, JSON 추출
-│   ├── plan.py           ← Planner 실행
-│   ├── generate.py       ← Generator (병렬 호출)
-│   ├── evaluate_data.py  ← 데이터 QA
+│   ├── _common.py        ← Anthropic 호출, JSONL I/O, build_user_block, resolver
+│   ├── plan.py / generate.py / evaluate_data.py
 │   ├── train_lora.py     ← SFTTrainer + PEFT LoRA
 │   ├── merge_lora.py     ← LoRA → merged FP16
-│   ├── eval_model.py     ← 골든셋 평가
+│   ├── eval_model.py     ← 골든셋 평가 (플랫 스키마 채점)
 │   └── quantize.sh       ← llama.cpp 양자화
 │
 ├── configs/
-│   ├── model_qwen3_0_6b.yaml  ← Qwen3-0.6B (단일 베이스)
+│   ├── model_qwen3_0_6b.yaml  ← Qwen3-0.6B 베이스 + system_prompt
 │   ├── lora.yaml             ← r=16, alpha=32
-│   └── train_qwen3_0_6b.yaml ← 하이퍼파라미터 (completion-only ON)
+│   └── train_qwen3_0_6b.yaml ← 하이퍼파라미터 (run_name = 현재 라운드)
 │
 ├── data/
-│   ├── raw/              ← Generator 원본 출력
-│   ├── processed/        ← QA 통과한 학습용
-│   ├── eval/             ← ★ 골든 평가셋 (수동 작성)
-│   └── failures/         ← 실패 케이스 (폐루프 입력)
+│   ├── raw/              ← ★ 실수집 원본(SMS sms_all.txt·카톡 kakao/·Gmail) + Generator 출력
+│   ├── processed/        ← QA/라벨링 통과한 학습용 (train.jsonl, val.jsonl)
+│   ├── eval/             ← ★ 골든 평가셋 golden.jsonl (수동 작성, git 추적)
+│   └── failures/         ← 실패 케이스 (폐루프, eval_model.py 자동생성)
 │
-├── models/
-│   ├── lora/             ← LoRA 어댑터
-│   ├── merged/           ← merged FP16
-│   └── gguf/             ← Q4_K_M 등
+├── models/               ← 전부 git 제외
+│   ├── lora/ · merged/ · gguf/(Q8_0 배포본)
 │
-├── ui/streamlit_app.py   ← 데이터 검수 + 에러 분석 (Streamlit)
-├── notebooks/            ← calendar_colab.ipynb(Colab L4 학습) / calendar_quantize.ipynb(로컬 양자화)
+├── ui/streamlit_app.py   ← 데이터 검수 + 에러 분석
+├── notebooks/            ← calendar_colab.ipynb / calendar_kaggle.ipynb (학습)
 ├── logs/                 ← 학습/평가 로그
-└── android/              ← 온디바이스 앱 (SMS/카톡 수집 + GGUF 추론 + DateResolver)
+└── android/              ← 온디바이스 앱 com.calenda (수집 + GGUF 추론 + DateResolver)
 ```
 
 ---
@@ -145,19 +142,25 @@ calenda/
 ### 데이터 형식
 - 모든 데이터는 **JSONL** (한 줄에 dict 하나, `orjson` 사용).
 - 페어 필드: `scenario_id`, `received_at`, `channel`, `sender`, `language`, `message`, `gold`. 멀티턴 케이스만 `thread_context`(직전 메시지 배열) 추가.
-- QA 통과 페어는 `_qa` 필드 추가, 평가 실패 케이스는 `_pred` / `_scores` / `_reason` 추가.
+- 데이터는 라운드마다 직접 append 누적(`assemble --apply`류 전면 재조립 금지 — 과거 회귀 이력).
+- 신규 train 추가 전 **golden 누수 전수 대조**(exact + difflib > 0.85), train↔golden 분리 유지.
 
 ### 모델 호출
 - 모든 호출은 `scripts/_common.py`의 `call_claude()`를 거친다 — 재시도/지수백오프 내장.
-- 기본 teacher 모델:
-  - Planner: `claude-sonnet-4-6`
-  - Generator: `claude-haiku-4-5-20251001`
-  - Data QA: `claude-haiku-4-5-20251001`
-  - Model Judge: `claude-sonnet-4-6`
+- 기본 teacher 모델: Planner `claude-sonnet-4-6` · Generator/Data QA `claude-haiku-4-5-20251001` · Model Judge `claude-sonnet-4-6`.
+- ⚠ **데이터 작성·수정에 Haiku API 쓰지 말 것** — criterion(Q1/Q2) 기준으로 Claude가 직접 정정.
+
+### 행동 원칙 / 함정
+- **시각 정확도가 최우선 KPI.** title/timezone 퍼지는 허용.
+- **음성 비율 ~40% 이상 유지** (낮추면 과발화).
+- **`build_user_block` 입력 포맷을 바꾸면 train·eval·앱(`DateResolver`/`ScheduleExtractor`) 세 곳을 함께** 바꿔야 한다. `_common.py` ↔ `DateResolver.kt`는 **항상 미러**.
+- **데이터 수정 시 config `run_name`/`output_dir`을 같은 커밋에서 함께** 올린다(버전 추적 일치).
+- **카톡 자가전송은 검출 불가**(내가 보낸 메시지엔 알림이 안 떠 NotificationListener 캡처 없음). 실수신만. SMS는 자가전송도 잡힘.
+- **앱 빌드**는 보통 Android Studio. CLI `gradlew :app:installDebug`도 되나 **Studio를 닫고**(`gradlew --stop`) 해야 Kotlin 데몬 충돌·`app/build` 잠금이 안 남는다.
+- PAT/OAuth/API 키를 채팅에 붙여넣지 말 것 — getpass에 사용자가 직접 입력.
 
 ### 라이선스 / 보안
-- `.env`는 절대 커밋 금지 (`.gitignore` 등록됨).
-- 모델/대용량 데이터도 git 제외. `data/eval/golden.jsonl`만 추적 대상(수동 골든셋).
+- `.env`·시크릿(예: `configs/HF_TOKEN_Kaggle.txt`)·실수집 원본(`data/raw/` 사적 메시지)은 **절대 커밋 금지**. 모델/대용량도 git 제외. `data/eval/golden.jsonl`만 추적.
 
 ---
 
@@ -165,23 +168,21 @@ calenda/
 
 **단일 베이스: Qwen/Qwen3-0.6B** (`configs/model_qwen3_0_6b.yaml`)
 - 한국어 양호, 토크나이저 효율 OK, LLaMA-like 구조라 LoRA target_modules 표준(q/k/v/o/gate/up/down_proj)
-- thinking 모델이나 SFT gold가 순수 JSON이라 학습으로 비-thinking 고정. 추론은 빈 `<think></think>` 프리필.
-- 폰 예산권 ~800MB(Q8까지). 배포 양자화는 Q8_0 고정(Q4_K_M은 회귀).
+- thinking 모델이나 SFT gold가 순수 JSON이라 학습으로 비-thinking 고정. 추론은 빈 `<think></think>` 프리필(학습 빈 think는 의도된 설계 — strip 금지).
+- 폰 예산권 ~800MB(Q8까지). **배포 양자화는 Q8_0 고정**(Q4_K_M은 매 라운드 회귀 확인 → 금지).
+- 어댑터 백업: HF `sooryong9885/Calenda-Qwen3-0.6B` (Kaggle Secret `HF_TOKEN`).
 
-(이전 Qwen2.5-0.5B / HyperCLOVA 라인은 폐기·삭제됨. 모델은 Qwen3-0.6B로 통일.)
+(이전 Qwen2.5-0.5B / HyperCLOVA 라인은 폐기.)
 
 ---
 
 ## 7. 환경
 
-- **Python 3.10~3.14**: 데이터 생성·평가 단계는 3.14에서도 잘 동작.
-  - **학습 단계**(`pip install -e .[train]`)에서 PyTorch/bitsandbytes wheel 못 찾으면 Python 3.11을 별도 설치 후 그쪽 venv로 학습만 수행.
-- OS: Windows 11 (D:\calenda에 설치). 학습 시 CUDA GPU 권장.
-- 의존성은 단계별 분리:
-  - `pip install -e .` — 데이터 생성·평가 (가벼움)
-  - `pip install -e .[train]` — 학습 라이브러리 (torch, peft, trl, transformers)
-  - `pip install -e .[ui]` — Streamlit
-- 양자화: `llama.cpp` 별도 클론 + 빌드 (`scripts/quantize.sh` 참고)
+- **Python 3.10~3.14**: 데이터 생성·평가는 3.14에서도 OK. **학습**(`pip install -e .[train]`)에서 PyTorch/bitsandbytes wheel 못 찾으면 Python 3.11 venv로 학습만.
+- OS: Windows 11 (`D:\calenda`). 학습은 클라우드 GPU.
+- 컴퓨팅: 로컬 = MX150 2GB(데이터/merge/quantize/검증) · 학습 = Colab Pro(L4/A100) + Kaggle T4×2.
+- 의존성 단계 분리: `pip install -e .`(데이터·평가) / `.[train]`(torch·peft·trl) / `.[ui]`(Streamlit).
+- 양자화: `llama.cpp` 별도 클론 + 빌드 (`scripts/quantize.sh`). 로컬 우회: HF 어댑터→merge_lora→`llama-quantize.exe`.
 
 ---
 
@@ -196,14 +197,11 @@ python scripts/plan.py        --out data/raw/plan_v1.json
 python scripts/generate.py    --plan data/raw/plan_v1.json --out data/raw/v1.jsonl --workers 4
 python scripts/evaluate_data.py --in data/raw/v1.jsonl --out data/processed/v1.jsonl
 
-# 학습 → merge → 평가 → 양자화 (학습은 Colab L4, merge/eval/quantize는 로컬)
+# 학습 → merge → 평가 → 양자화 (학습은 Colab/Kaggle, merge/eval/quantize는 로컬)
 python scripts/train_lora.py  --config configs/train_qwen3_0_6b.yaml
-python scripts/merge_lora.py  --base Qwen/Qwen3-0.6B --lora models/lora/c2-qwen3-0.6b --out models/merged/c2-qwen3-0.6b
-python scripts/eval_model.py  --model models/merged/c2-qwen3-0.6b --eval data/eval/golden.jsonl --out logs/eval_c2-qwen3-0.6b.json --model_config configs/model_qwen3_0_6b.yaml
-bash   scripts/quantize.sh    models/merged/c2-qwen3-0.6b models/gguf/c2-qwen3-0.6b
-
-# 폐루프: 실패셋으로 다음 라운드 시나리오 생성
-python scripts/plan.py --failures data/failures/round_latest.jsonl --out data/raw/plan_v2.json
+python scripts/merge_lora.py  --base Qwen/Qwen3-0.6B --lora models/lora/d9-qwen3-0.6b --out models/merged/d9-qwen3-0.6b
+python scripts/eval_model.py  --model models/merged/d9-qwen3-0.6b --eval data/eval/golden.jsonl --out logs/eval_d9-qwen3-0.6b.json --model_config configs/model_qwen3_0_6b.yaml
+bash   scripts/quantize.sh    models/merged/d9-qwen3-0.6b models/gguf/d9-qwen3-0.6b
 
 # UI
 streamlit run ui/streamlit_app.py
@@ -211,30 +209,80 @@ streamlit run ui/streamlit_app.py
 
 ---
 
-## 9. 폐루프 (Active Learning)
+## 9. 학습 한 라운드 (Colab L4 / Kaggle T4×2)
 
-`scripts/eval_model.py`가 점수 낮은 샘플을 `data/failures/round_latest.jsonl`에 자동 저장한다.
-다음 라운드 Planner를 `--failures` 옵션으로 호출하면 약점 보강 시나리오 위주로 생성한다.
-보통 3~5라운드면 plateau에 도달한다.
+`notebooks/calendar_colab.ipynb`(또는 `calendar_kaggle.ipynb`)를 위→아래 실행. 데이터가 repo에 포함돼 **clone만으로** 학습.
 
----
-
-## 10. 현재 개발 단계
-
-상세·다음 할 일은 `HANDOFF.md`, 과거 라운드 이력은 `ARCHIVE.md` 참조. 요약 (2026-06-29):
-- ✅ **방향 전환**: 합성 라운드(r11~r34·c1/c2/c9 계열) 전부 폐기 → **실제 SMS/카톡/Gmail 수집 데이터**로 재구축. `data/raw/`에 실메시지 풀.
-- ✅ **플랫 스키마 마이그레이션 완료**: `is_schedule`(bool) + `title/date/time/end_time/location/description` 단일 이벤트. `prompts/schema.md`·`schedule_criterion.md`(yes/no 2-way)·`eval_model.py`·앱(`ScheduleExtractor`/`DateResolver`) 전부 플랫.
-- ✅ **extract-resolve 유지**: 모델=추출, resolver=계산. `_common`↔`DateResolver` 미러. 멀티턴 `build_user_block` 공용.
-- ⏳ **현재: d8 학습 단계.** `configs/train_qwen3_0_6b.yaml` run_name=`d8-qwen3-0.6b-lora`, epochs=3. `train.jsonl` **371건**(is_schedule true/false 혼합) · `golden.jsonl` **50건**. → push → Kaggle/Colab 학습 → merge → eval → Q8_0 양자화.
-- 🟡 **배포본은 아직 c2v13 Q8_0**(구 3-way). 앱이 구스키마 폴백으로 호환 중. d8 학습·평가 통과 후 교체 예정.
-- ✅ **앱 카드 UI 개편**: 카드 탭 → 원본 메시지 앱 열기(SMS는 발신자 대화방 딥링크), 발신자 필수 표시 + 장소·설명, 버튼 [삭제]·[등록하기]/[등록취소]. (구 [소스]·[캘린더] 버튼·카드탭→편집 폐지)
+- ⚠️ **학습 전 반드시 `git push origin main`** — 노트북이 `git clone`으로 최신 데이터를 가져온다. 푸시 안 하면 이전 라운드로 돈다.
+- 라운드 올릴 땐 `configs/train_qwen3_0_6b.yaml`의 `run_name`·`output_dir` 두 곳만 변경(데이터 커밋과 함께).
+- Colab 세션 종료 전 **즉시 lora zip 다운로드**(`/content/`는 세션 정리 시 삭제).
+- 로컬: zip → `models/lora/dN/` 해제 → `merge_lora.py` → `eval_model.py` → `quantize.sh`.
+- bf16 유지. ⚠️ **`num_train_epochs`는 3 고정** — 2는 언더핏 회귀(recall·time↓). `load_best_model_at_end`가 best epoch을 고르므로 과적합 위험 없음. 시간 단축은 데이터 축소로.
 
 ---
 
-## 11. 모르는 게 있으면
+## 10. 배포 절차 (gguf 교체)
 
-- 출력 스키마: `prompts/schema.md`
+1. `merge_lora.py` → `quantize.sh` → `models/gguf/dN/dN.Q8_0.gguf`. (Q4_K_M 금지 — 회귀.)
+2. (선택) Ollama 로컬 검증: `Modelfile`(FROM **절대경로** + SYSTEM=model_qwen.yaml) → `ollama create`. ※ 상대경로면 "invalid model name" 에러.
+3. adb push → **md5 대조** → 옛 슬롯 `.bak` 백업 → 교체 → `am force-stop`. 슬롯명 고정 `calendar.Q4_K_M.gguf`(콘텐츠는 Q8_0).
+4. ⚠️ **사용자가 앱을 한 번 열어야** 수집 재가동(force-stop=stopped는 브로드캐스트 차단).
+5. resolver(`DateResolver.kt`)·앱 코드가 바뀌었으면 **앱도 재빌드**(installDebug).
+
+---
+
+## 11. 폐루프 (Active Learning)
+
+`scripts/eval_model.py`가 점수 낮은 샘플을 `data/failures/round_latest.jsonl`에 자동 저장. 다음 라운드 Planner를 `--failures`로 호출하면 약점 보강 시나리오 위주로 생성. eval JSON(`logs/`)·failures 파일은 Claude가 직접 읽는다(사용자 붙여넣기 불필요).
+
+---
+
+## 12. 현재 단계 + 다음 할 일 (2026-06-29)
+
+**방향:** 합성 라운드(r·c 계열)를 전부 폐기하고, **실제 수집 메시지(SMS/카톡/Gmail)를 true/false로 라벨링**해 재구축. 모델은 플랫 스키마로 일정 유무·필드를 추출, 앱이 등록을 처리한다.
+
+**상태**
+- ✅ **플랫 스키마**: `is_schedule`(bool) + `title/date/time/end_time/location/description` 단일 이벤트. `schema.md`·`schedule_criterion.md`(yes/no 2-way)·`eval_model.py`·앱 전부 플랫.
+- ✅ **데이터**: `data/processed/train.jsonl` ~371건(true/false 혼합) · `data/eval/golden.jsonl` 50건. 실수집 원본 풀은 `data/raw/`(sms_all.txt·kakao/). extract-resolve·멀티턴 유지.
+- ✅ **앱 카드 UI 개편**: 카드 탭 → 원본 메시지 앱 열기(SMS는 발신자 대화방 딥링크), 발신자 필수 표시 + 장소·설명, 버튼 [삭제]·[등록하기]/[등록취소].
+- ⏳ **현재 학습 라운드 = d9** (`run_name d9-qwen3-0.6b-lora`, epochs 3, output `models/lora/d9-qwen3-0.6b`).
+- 🟡 **배포본은 아직 c2v13 Q8_0**(구 3-way). 앱 구스키마 폴백으로 호환 중. d-시리즈 통과 후 교체.
+
+**버전 관리**: 학습 라운드 = `dN` 시리즈(현재 d9), 앱 = `versionName` (현재 `0.1.0`, `android/app/build.gradle`). 라운드 올릴 때 config 두 줄 + 데이터 커밋 동반.
+
+**다음 할 일**
+1. **d9 학습**: `git push origin main` → Kaggle/Colab 학습.
+2. **d9 평가**: merge → `eval_model.py`(golden 50, 플랫 채점) → **Q8_0 양자화** → 폰 배포(§10).
+3. **데이터 보강**: `is_schedule=false` 다양성(거래·광고·공고·남의 일정·location 오추출)을 `data/raw/` 실풀에서 추가 라벨링.
+4. **앱 재빌드**: 카드 UI 변경 반영 Android Studio 재빌드 → APK 설치.
+
+---
+
+## 13. 트러블슈팅
+
+| 증상 | 원인 / 해결 |
+|------|------------|
+| 배포 후 검출 안 됨 | force-stop/재설치 후 **앱 미실행(stopped)** → 브로드캐스트 차단. **앱 한 번 열기.** logcat `MessagePipeline: onMessage` 확인. |
+| 카톡만 검출 안 됨 | 자가전송이면 정상(알림 없음). 실수신 + 그 방 닫아둔 상태여야. |
+| 점수가 낮아 보임 | 결합 메트릭은 과발화 1건이 title/time/loc 동반 0처리 → 디커플링 지표(TP 추출력)로 확인. |
+| Ollama 출력 빈손 | MX150 2GB/Vulkan 이슈. CPU 강제 또는 스킵. 모델은 fp16 eval로 검증. |
+| `ollama create` "invalid model name" | Modelfile FROM이 상대경로 → 절대경로로. |
+| 한글 깨짐(PowerShell/cp1252) | `PYTHONUTF8=1`. |
+| Colab 학습물 증발 | 세션 종료 시 `/content/` 삭제. 끝나면 즉시 lora zip 다운로드. |
+| 빌드 `Unable to delete directory ...dataBindingGenBaseClasses` (Defender ↔ Gradle 경합) | ① `gradlew --stop` + java 프로세스 kill ② 막힌 `app/build/generated/...out` 선제 삭제 ③ `gradlew :app:assembleDebug --no-daemon --no-watch-fs`. 근본해결 `Add-MpPreference -ExclusionPath D:\calenda`(관리자). |
+
+---
+
+## 14. 사용자 정보
+
+- 이름: Soo / 변수룡 (`sooryong.byun@gmail.com` — 앱·git·캘린더·피드백 수신 통일). 한국어 대화 선호, 기술 용어 영어 OK. 질문·승인 최소화하고 합리적 기본값으로 자율 진행 선호.
+- 머신: Windows 11, MX150 2GB. 폰: SM-S936N(무선 adb — 가끔 끊김, 무선 디버깅 재토글).
+- 저장소: `D:\calenda` (GitHub `sooryong/Calenda`).
+
+---
+
+## 15. 모르는 게 있으면
+
+- 출력 스키마: `prompts/schema.md` · 분류 기준: `prompts/schedule_criterion.md`
 - 프롬프트 본문: `prompts/{planner,generator,evaluator}.md`
 - 환경 설정 트러블슈팅: `SETUP.md`
-- 지금 당장 할 일: `HANDOFF.md`
-- 과거 라운드 이력(r11~r34·c1/c2/c9·d5~ 진단·설계): `ARCHIVE.md`

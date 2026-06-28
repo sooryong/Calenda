@@ -23,6 +23,9 @@ env/
 **/client_secret_*.json
 **/*.apps.googleusercontent.com.json
 google-services.json
+# HF 토큰 등 시크릿
+configs/HF_TOKEN_Kaggle.txt
+*_TOKEN*.txt
 
 # --- 모델 / 데이터 (대용량) ---
 models/lora/*
@@ -35,9 +38,13 @@ models/output/
 
 data/raw/*.jsonl
 data/raw/*.json
+# 실수집 SMS/카톡 원본(사적) — 절대 커밋 금지
+data/raw/*.txt
+data/raw/kakao/
 data/processed/*.jsonl
 data/failures/*.jsonl
-data/feedback_raw/        # 폰 피드백 원본 export(실 사적 메시지) — 절대 커밋 금지
+# 폰 피드백 원본 export(실 사적 메시지) — 절대 커밋 금지
+data/feedback_raw/
 !data/**/.gitkeep
 
 # 평가 골든셋은 형상관리 대상이지만 파일이 크면 LFS 고려
