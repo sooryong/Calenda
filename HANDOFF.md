@@ -4,6 +4,27 @@
 
 ---
 
+## 0-FLAT. ★★★ 플랫 스키마 마이그레이션 완료 (2026-06-28) — d5 학습 준비
+
+**핵심 변경:** `schedule_status + events[]` → `is_schedule(bool) + title/date/time/end_time/location/description` 플랫 구조.
+- ✅ **스키마**: `prompts/schema.md` 완전 재작성 (플랫 7-필드)
+- ✅ **데이터**: `train.jsonl`(394건: is_schedule=true:206, false:188) + `golden.jsonl`(71건: true:22, false:49) 변환. 백업: `.pre_flat_bak`
+- ✅ **평가 스크립트**: `eval_model.py` — `score_fields()` 플랫 채점, `is_schedule` acc, `final_score` 재산출(0.25+0.30+0.45)
+- ✅ **프롬프트**: `generator.md`·`evaluator.md` 플랫 스키마 기준 전면 재작성 (few-shot 12개)
+- ✅ **Config**: `configs/train_qwen3_0_6b.yaml` → `d5`, `configs/model_qwen3_0_6b.yaml` system_prompt 갱신
+- ✅ **Android**: `ScheduleExtractor.kt`(파싱·데이터 클래스 플랫화+구형 폴백), `DateResolver.kt`(resolveEvent 단순화), `MessagePipeline.kt`(ext.event 직접 사용)
+- ✅ **앱 UI**: 일정 카드 [소스] 버튼(채널 앱 열기) + [캘린더] 버튼(등록된 이벤트 열기) (이전 세션)
+
+**다음 단계:**
+1. **d5 학습**: `git push origin main` → Kaggle T4×2 DDP 학습 (`configs/train_qwen3_0_6b.yaml` run_name=d5, epochs=3, 394건)
+2. **d5 평가**: merge → `eval_model.py` (golden 71건, 플랫 스키마 채점)
+3. **데이터 보강**: is_schedule=false 케이스 다양성 보강(location 오추출·사람이름→장소 혼동 등)
+4. **앱 재빌드**: Android Studio로 플랫 스키마 앱 재빌드 → APK 설치
+
+**주의:** 현 배포본 앱(c2v13, 3-way 구 스키마)은 `ScheduleExtractor.parse()`의 구 스키마 폴백으로 계속 호환. 재빌드 후 교체.
+
+---
+
 ## 0-CRITERION. ★★★ c9 4-phase 정비 완료 (2026-06-21) — 원칙 정렬
 
 **핵심 원칙 확립:** "수신 시각 이후, 사용자 본인이 해야 할 일·지켜야 할 약속의 제목·날짜·시간·장소를 찾는다."
