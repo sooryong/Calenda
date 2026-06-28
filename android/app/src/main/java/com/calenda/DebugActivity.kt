@@ -184,7 +184,10 @@ class DebugActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val raw = withContext(Dispatchers.Default) { LlamaBridge.complete(prompt, nPredict = 256) }
             val ext = ScheduleExtractor.parse(raw)
-            lastEvents = ext.events.map { DateResolver.resolveEvent(receivedAt, sender, it) }
+            val resolved = if (ext.detected && ext.event != null)
+                listOf(DateResolver.resolveEvent(receivedAt, sender, ext.event))
+            else emptyList()
+            lastEvents = resolved
             renderResult(ext, lastEvents)
             if (ext.parseError == null && ext.detected && lastEvents.isNotEmpty()) {
                 EventRepository.from(this@DebugActivity).save(
@@ -205,7 +208,7 @@ class DebugActivity : AppCompatActivity() {
             binding.addCalendarButton.visibility = View.GONE
             return
         }
-        sb.append("schedule_status: ").append(ext.scheduleStatus).append("\n")
+        sb.append("is_schedule: ").append(ext.isSchedule).append("\n")
         if (!ext.detected || events.isEmpty()) {
             sb.append("\n→ 등록할 일정 없음")
             binding.resultText.text = sb.toString()
@@ -218,9 +221,7 @@ class DebugActivity : AppCompatActivity() {
             sb.append("시작: ").append(e.start ?: "(없음)").append("\n")
             if (e.end != null) sb.append("종료: ").append(e.end).append("\n")
             if (e.location != null) sb.append("장소: ").append(e.location).append("\n")
-            if (e.attendees.isNotEmpty()) sb.append("참석: ").append(e.attendees.joinToString(", ")).append("\n")
-            if (e.recurrence != null) sb.append("반복: ").append(e.recurrence).append("\n")
-            sb.append("신뢰도: ").append(e.confidence).append("\n")
+            if (e.description != null) sb.append("메모: ").append(e.description).append("\n")
         }
         binding.resultText.text = sb.toString()
         binding.addCalendarButton.visibility = View.VISIBLE
