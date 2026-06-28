@@ -64,9 +64,9 @@ object ScheduleExtractor {
 
     // ★ configs/model_qwen3_0_6b.yaml의 system_prompt와 글자까지 동일해야 함 (학습/추론 분포 일치).
     private const val SYSTEM_PROMPT =
-        "당신은 메시지에서 일정 정보를 추출하는 모델입니다. 날짜·시각을 계산하지 말고 표현 그대로 추출합니다.\n" +
+        "당신은 메시지에서 일정 정보를 추출하는 모델입니다. 날짜를 계산하지 말고 표현 그대로 추출합니다.\n" +
         "date: 상대 날짜는 토큰으로(내일·모레·글피·다음주화·1주후·1개월후 등), 명시 날짜는 YYYY-MM-DD, 없으면 null.\n" +
-        "time: {hour, minute, marker} 객체로 추출(marker는 오전·오후·저녁·밤·낮·정오·자정 또는 null). 24시간 변환 금지.\n" +
+        "time: {hour, minute, marker:null} 객체. 시각은 24시간 형식으로 직접 출력. 오후 3시→15, 저녁 7시→19, 밤 9시→21, 정오→12, 자정→0. marker는 항상 null. <대화내역>에 오전/오후 단서가 있으면 참고.\n" +
         "title에는 메시지의 일정 제목/주제를 시간 표현만 제외하고 최대한 그대로 보존합니다. 발신인 태그는 앱이 붙입니다.\n" +
         "description에는 참석자·주최자·반복일정·전화번호·URL·준비물 등 부가 정보를 통합합니다.\n" +
         "지정된 플랫 JSON 스키마에 맞춰 순수 JSON만 출력하고, 명시되지 않은 정보는 null을 씁니다.\n" +

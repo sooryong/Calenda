@@ -146,15 +146,17 @@ def resolve_date(received_date: _date, token: str | None) -> _date | None:
 
 
 def resolve_time(time_obj: dict | None, received_dt: _datetime) -> str | None:
-    """time {hour,minute,marker} → 'HH:MM'(24h). None이면 None. schema.md 변환표와 1:1.
-    표시어 없는 1~12시는 받은 시각 이후 가장 가까운 쪽(AM/PM), 둘 다 과거면 오후."""
+    """time {hour(0-23),minute,marker:null} → 'HH:MM'(24h).
+    d8~: 모델이 24h 직접 출력하므로 hour를 그대로 사용.
+    marker 폴백: 구 모델(d7 이전) 출력 호환을 위해 유지."""
     if not time_obj:
         return None
     h = int(time_obj.get("hour") or 0)
     m = int(time_obj.get("minute") or 0)
     k = time_obj.get("marker")
+    # marker 폴백 (구 스키마 / 모델이 실수로 marker를 낼 경우)
     if k in ("오후", "저녁", "밤", "낮"):
-        if h < 12:
+        if 1 <= h <= 11:
             h += 12
     elif k in ("오전", "아침", "새벽"):
         if h == 12:
@@ -163,10 +165,7 @@ def resolve_time(time_obj: dict | None, received_dt: _datetime) -> str | None:
         h, m = 12, 0
     elif k == "자정":
         h, m = 0, 0
-    elif k is None and 1 <= h <= 12:
-        am, pm = h % 12, h % 12 + 12
-        rh = received_dt.hour + received_dt.minute / 60
-        h = next((c for c in sorted((am, pm)) if c >= rh), pm)
+    # marker가 null이면 hour를 그대로 사용 (모델이 24h로 출력함)
     return f"{h:02d}:{m:02d}"
 
 
