@@ -232,9 +232,10 @@ def run_eval(samples, infer_fn, out=None, failures_out=None):
             for k in tp_sum:
                 tp_sum[k] += scores[k]
 
-        # 실패 임계
-        if scores["title_f1"] < 0.7 or scores["time_f1"] < 1.0:
-            failures.append({**sample, "_pred": pred, "_scores": scores})
+        # 실패 임계: schedule_status 오답 OR 추출 품질 미달 (두 필드 동등 기준)
+        status_match = (p_cls == g_cls)
+        if not status_match or scores["title_f1"] < 0.7 or scores["time_f1"] < 1.0:
+            failures.append({**sample, "_pred": pred, "_scores": {**scores, "status_match": status_match}})
 
     n = len(samples)
     metrics = {
