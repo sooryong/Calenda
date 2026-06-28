@@ -98,19 +98,22 @@ object DateResolver {
         return null
     }
 
-    /** time {hour(0-23),minute,marker:null} → "HH:MM"(24h). null이면 null.
-     *  d8~: 모델이 24h 직접 출력. marker 폴백은 구 모델 호환용으로만 유지. */
+    /** time {hour,minute,marker} → "HH:MM"(24h). null이면 null. */
     fun resolveTime(t: TimeOfDay?, received: LocalDateTime): String? {
         if (t == null) return null
         var h = t.hour
         var m = t.minute
-        // marker 폴백 (구 모델 / 실수 출력 대비)
         when (t.marker) {
-            "오후", "저녁", "밤", "낮" -> if (h in 1..11) h += 12
+            "오후", "저녁", "밤", "낮" -> if (h < 12) h += 12
             "오전", "아침", "새벽" -> if (h == 12) h = 0
             "정오" -> { h = 12; m = 0 }
             "자정" -> { h = 0; m = 0 }
-            // null → hour를 그대로 사용 (모델이 24h로 출력)
+            null -> if (h in 1..12) {                       // 표시어 없는 1~12시: 받은시각 이후 가장 가까운 쪽
+                val am = h % 12
+                val pm = h % 12 + 12
+                val rh = received.hour + received.minute / 60.0
+                h = listOf(am, pm).sorted().firstOrNull { it >= rh } ?: pm
+            }
         }
         return "%02d:%02d".format(h, m)
     }
