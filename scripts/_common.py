@@ -150,7 +150,7 @@ def resolve_time(time_obj: dict | None, received_dt: _datetime) -> str | None:
     표시어 없는 1~12시는 받은 시각 이후 가장 가까운 쪽(AM/PM), 둘 다 과거면 오후."""
     if not time_obj:
         return None
-    h = int(time_obj.get("hour", 0))
+    h = int(time_obj.get("hour") or 0)
     m = int(time_obj.get("minute") or 0)
     k = time_obj.get("marker")
     if k in ("오후", "저녁", "밤", "낮"):
