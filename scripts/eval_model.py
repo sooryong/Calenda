@@ -133,10 +133,13 @@ def infer(model, tok, system: str, sample: dict, max_new_tokens: int = 512, supp
     encoded = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True, **extra)
     if hasattr(encoded, "input_ids"):
         input_ids = encoded.input_ids.to(model.device)
+        attention_mask = encoded.attention_mask.to(model.device) if hasattr(encoded, "attention_mask") else (input_ids != tok.pad_token_id).long()
     else:
         input_ids = encoded.to(model.device)
+        attention_mask = (input_ids != tok.pad_token_id).long()
     out = model.generate(
         input_ids,
+        attention_mask=attention_mask,
         max_new_tokens=max_new_tokens,
         do_sample=False,
         pad_token_id=tok.eos_token_id,
