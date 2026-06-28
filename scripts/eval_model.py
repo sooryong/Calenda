@@ -102,7 +102,7 @@ def load_model(path: str):
 
     tok = AutoTokenizer.from_pretrained(path)
     model = AutoModelForCausalLM.from_pretrained(
-        path, torch_dtype=torch.float16, device_map="auto"
+        path, dtype=torch.float16, device_map="auto"
     )
     model.eval()
     return model, tok

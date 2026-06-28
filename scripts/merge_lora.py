@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 
 def main():
@@ -23,12 +24,14 @@ def main():
     print(f"[merge] base={args.base}")
     print(f"[merge] lora={args.lora}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.base, trust_remote_code=args.trust_remote_code)
+    _token = os.environ.get("HF_TOKEN") or None
+    tokenizer = AutoTokenizer.from_pretrained(args.base, trust_remote_code=args.trust_remote_code, token=_token)
     base = AutoModelForCausalLM.from_pretrained(
         args.base,
-        torch_dtype=torch.float16,
-        device_map="cpu",  # merge는 CPU에서도 충분히 빠름 (0.5B)
+        dtype=torch.float16,
+        device_map="cpu",
         trust_remote_code=args.trust_remote_code,
+        token=_token,
     )
     model = PeftModel.from_pretrained(base, args.lora)
     merged = model.merge_and_unload()
