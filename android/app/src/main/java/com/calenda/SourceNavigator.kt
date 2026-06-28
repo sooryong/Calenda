@@ -1,14 +1,13 @@
 package com.calenda
 
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.CalendarContract
 import android.widget.Toast
 
 /**
- * 일정 카드 [소스] 탭 → 원본 앱 열기, [캘린더] 탭 → Google Calendar 이벤트 열기.
+ * 일정 카드 탭 → 원본 메시지 앱 열기.
+ * SMS는 발신자 대화방으로 딥링크(가능 시), 카톡·Gmail은 앱을 연다(특정 메시지 딥링크 미지원).
  * 앱이 설치되어 있지 않으면 토스트로 안내.
  */
 object SourceNavigator {
@@ -16,28 +15,24 @@ object SourceNavigator {
     /** 채널에 맞는 앱을 연다. */
     fun openSource(ctx: Context, event: DetectedEvent) {
         when (event.channel) {
-            "sms"   -> openSmsApp(ctx)
+            "sms"   -> openSmsApp(ctx, event.sender)
             "kakao" -> openKakaoTalk(ctx)
             "gmail" -> openGmail(ctx)
             else    -> toast(ctx, ctx.getString(R.string.source_not_found))
         }
     }
 
-    /** 등록된 일정을 Google Calendar 앱에서 연다. */
-    fun openCalendarEvent(ctx: Context, calendarEventId: Long) {
-        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, calendarEventId)
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        startSafe(ctx, intent)
-    }
-
     // ── 채널별 앱 열기 ──────────────────────────────────────────────────────
 
-    private fun openSmsApp(ctx: Context) {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            type = "vnd.android-dir/mms-sms"
+    /** SMS: 발신자 번호가 있으면 그 대화방으로, 없으면 메시지 앱 메인으로. */
+    private fun openSmsApp(ctx: Context, sender: String) {
+        val number = sender.filter { it.isDigit() || it == '+' }
+        if (number.isNotEmpty()) {
+            val thread = Intent(Intent.ACTION_VIEW, Uri.parse("smsto:$number"))
+            if (startSafe(ctx, thread)) return
         }
-        if (!startSafe(ctx, intent)) {
-            // 폴백: 기본 다이얼러 없는 환경 — URI scheme
+        val main = Intent(Intent.ACTION_MAIN).apply { type = "vnd.android-dir/mms-sms" }
+        if (!startSafe(ctx, main)) {
             startSafe(ctx, Intent(Intent.ACTION_VIEW, Uri.parse("sms:")))
         }
     }
@@ -74,7 +69,6 @@ object SourceNavigator {
             ctx.startActivity(intent)
             true
         } catch (_: Exception) {
-            toast(ctx, ctx.getString(R.string.source_not_found))
             false
         }
     }

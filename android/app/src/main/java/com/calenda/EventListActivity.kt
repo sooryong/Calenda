@@ -1,6 +1,5 @@
 package com.calenda
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -23,7 +22,7 @@ class EventListActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityEventListBinding
     private val repo by lazy { EventRepository.from(this) }
-    private val adapter = EventAdapter(onDelete = ::onDelete, onRegister = ::onRegister, onEdit = ::onEdit, onSource = ::onSource, onCalendar = ::onCalendar)
+    private val adapter = EventAdapter(onDelete = ::onDelete, onRegister = ::onRegister, onSource = ::onSource)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,20 +72,9 @@ class EventListActivity : AppCompatActivity() {
         }
     }
 
-    /** 편집: 편집 화면 열기. */
-    private fun onEdit(e: DetectedEvent) {
-        startActivity(Intent(this, EventEditActivity::class.java).putExtra(EventEditActivity.EXTRA_ID, e.id))
-    }
-
+    /** 카드 탭: 원본 메시지 앱 열기. */
     private fun onSource(e: DetectedEvent) {
         SourceNavigator.openSource(this, e)
-    }
-
-    private fun onCalendar(e: DetectedEvent) {
-        val calId = e.calendarEventId
-        if (calId != null) {
-            SourceNavigator.openCalendarEvent(this, calId)
-        }
     }
 
     private fun addToCalendar(e: DetectedEvent) {

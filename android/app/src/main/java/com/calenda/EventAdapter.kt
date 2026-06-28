@@ -12,18 +12,16 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 메인·이벤트함 카드 공용 어댑터. 버튼 세 개:
- *   [소스]            — 원본 앱(SMS/카톡/Gmail) 열기.
- *   [삭제]            — 이벤트함에서 제거(등록돼 있으면 캘린더 일정도 함께 삭제).
- *   [등록 / 캘린더]   — 미등록이면 캘린더 등록, 등록됨이면 Google Calendar 앱에서 열기.
- * 카드 본문 탭 → 편집 화면.
+ * 메인·이벤트함 카드 공용 어댑터.
+ *   카드 본문 탭      — 원본 앱(SMS/카톡/Gmail) 열기.
+ *   [삭제]            — 일정 자체를 제거(등록돼 있으면 캘린더 일정도 함께 삭제).
+ *   [등록하기/등록취소] — 미등록이면 캘린더 등록, 등록됨이면 등록 취소(캘린더에서 제거, 이벤트함엔 유지).
+ * 본문: 제목 · 시간 · 발신자(필수) · 장소(있으면) · 설명(있으면) · 채널/수신시각/상태.
  */
 class EventAdapter(
     private val onDelete: (DetectedEvent) -> Unit,
     private val onRegister: (DetectedEvent) -> Unit,
-    private val onEdit: (DetectedEvent) -> Unit,
     private val onSource: (DetectedEvent) -> Unit = {},
-    private val onCalendar: (DetectedEvent) -> Unit = {},
 ) : ListAdapter<DetectedEvent, EventAdapter.VH>(DIFF) {
 
     inner class VH(val b: ItemEventBinding) : RecyclerView.ViewHolder(b.root)
@@ -41,11 +39,23 @@ class EventAdapter(
         b.eventTitle.text = e.title
         b.eventTime.text = prettyTime(e.start, e.allDay)
 
+        // 발신자: 필수 표시
+        b.eventSender.text = ctx.getString(R.string.card_sender_fmt, e.sender.ifBlank { "—" })
+
+        // 장소: 있으면
         if (e.location.isNullOrBlank()) {
             b.eventLocation.visibility = View.GONE
         } else {
             b.eventLocation.visibility = View.VISIBLE
-            b.eventLocation.text = e.location
+            b.eventLocation.text = ctx.getString(R.string.card_location_fmt, e.location)
+        }
+
+        // 설명: 있으면
+        if (e.description.isNullOrBlank()) {
+            b.eventDescription.visibility = View.GONE
+        } else {
+            b.eventDescription.visibility = View.VISIBLE
+            b.eventDescription.text = e.description
         }
 
         val registered = e.status == EventStatus.ADDED || e.status == EventStatus.AUTO_ADDED
@@ -55,26 +65,18 @@ class EventAdapter(
             if (registered) append(" · 등록됨")
         }
 
-        // [소스]: 원본 앱 열기
-        b.btnSource.text = ctx.getString(R.string.act_source)
-        b.btnSource.setOnClickListener { onSource(e) }
-
-        // [삭제]
+        // [삭제]: 일정 자체 제거
         b.btnPrimary.text = ctx.getString(R.string.act_delete)
         b.btnPrimary.setOnClickListener { onDelete(e) }
 
-        // [캘린더](등록됨) 또는 [등록](미등록)
-        if (registered) {
-            b.btnSecondary.text = ctx.getString(R.string.act_calendar_view)
-            b.btnSecondary.setOnClickListener { onCalendar(e) }
-        } else {
-            b.btnSecondary.text = ctx.getString(R.string.act_add)
-            b.btnSecondary.setOnClickListener { onRegister(e) }
-        }
+        // [등록취소](등록됨) 또는 [등록하기](미등록)
+        b.btnSecondary.text =
+            ctx.getString(if (registered) R.string.act_unregister else R.string.act_register)
+        b.btnSecondary.setOnClickListener { onRegister(e) }
         b.btnSecondary.isEnabled = true
 
-        // 편집: 카드 본문 탭.
-        b.root.setOnClickListener { onEdit(e) }
+        // 카드 본문 탭 → 원본 메시지 앱 열기.
+        b.root.setOnClickListener { onSource(e) }
     }
 
     private fun prettyTime(start: String?, allDay: Boolean): String {
